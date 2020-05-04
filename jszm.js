@@ -530,76 +530,76 @@ JSZM.prototype = {
               predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
             },
             2: // LESS?
-            () => {
-              predicate(op0 < op1);
+            (a, b) => {
+              predicate(a < b);
             },
             3: // GRTR?
-            () => {
-              predicate(op0 > op1);
+            (a, b) => {
+              predicate(a > b);
             },
             4: // DLESS?
-            () => {
-              xstore(op0, x = xfetch(op0) - 1);
-              predicate(x < op1);
+            (a, b) => {
+              xstore(a, x = xfetch(a) - 1);
+              predicate(x < b);
             },
             5: // IGRTR?
-            () => {
-              xstore(op0,x=xfetch(op0)+1);
-              predicate(x>op1);
+            (a, b) => {
+              xstore(a, x = xfetch(a) + 1);
+              predicate(x > b);
             },
             6: // IN?
             () => {
-              predicate(mem[objects+op0*9+4]==op1);
+              predicate(mem[objects + op0 * 9 + 4] == op1);
             },
             7: // BTST
-            () => {
-              predicate((op0&op1)==op1);
+            (a, bits) => {
+              predicate((a & bits) == bits);
             },
             8: // BOR
-            () => {
-              store(op0|op1);
+            (a, b) => {
+              store(a | b);
             },
             9: // BAND
-            () => {
-              store(op0&op1);
+            (a, b) => {
+              store(a & b);
             },
             10: // FSET?
             () => {
               flagset();
-              predicate(opc&op3);
+              predicate(opc & op3);
             },
             11: // FSET
             () => {
               flagset();
-              this.put(op2,opc|op3);
+              this.put(op2, opc | op3);
             },
             12: // FCLEAR
             () => {
               flagset();
-              this.put(op2,opc&~op3);
+              this.put(op2, opc & ~op3);
             },
             13: // SET
-            () => {
-              xstore(op0,op1);
+            (loc, value) => {
+              xstore(loc, value);
             },
             14: // MOVE
             () => {
-              move(op0,op1);
+              move(op0, op1);
             },
             15: // GET
             () => {
-              store(this.get((op0+op1*2)&65535));
+              store(this.get((op0 + op1 * 2) & 65535));
             },
             16: // GETB
             () => {
-              store(mem[(op0+op1)&65535]);
+              store(mem[(op0 + op1) & 65535]);
             },
             17: // GETP
             () => {
               if (propfind()) {
-                store(mem[op3-1]&32?this.get(op3):mem[op3]);
+                store(mem[op3-1] & 32 ? this.get(op3) : mem[op3]);
               } else {
-                store(this.get(defprop+2*op1));
+                store(this.get(defprop + 2 * op1));
               }
             },
             18: // GETPT
@@ -612,84 +612,84 @@ JSZM.prototype = {
               if (op1) {
                 // Return next property
                 propfind();
-                store(mem[op3+(mem[op3-1]>>5)+1]&31);
+                store(mem[op3 + (mem[op3 - 1] >> 5) + 1] & 31);
               } else {
                 // Return first property
-                x=this.getu(objects+op0*9+7);
-                store(mem[x+mem[x]*2+1]&31);
+                x = this.getu(objects + op0 * 9 + 7);
+                store(mem[x + mem[x] * 2 + 1] & 31);
               }
             },
             20: // ADD
-            () => {
-              store(op0+op1);
+            (a, b) => {
+              store(a + b);
             },
             21: // SUB
-            () => {
-              store(op0-op1);
+            (a, b) => {
+              store(a - b);
             },
             22: // MUL
-            () => {
-              store(Math.imul(op0,op1));
+            (a, b) => {
+              store(Math.imul(a, b));
             },
             23: // DIV
-            () => {
-              store(Math.trunc(op0/op1));
+            (a, b) => {
+              store(Math.trunc(a / b));
             },
             24: // MOD
-            () => {
-              store(op0%op1);
+            (a, b) => {
+              store(a % b);
             },
             128: // ZERO?
-            () => {
-              predicate(!op0);
+            (a) => {
+              predicate(!a);
             },
             129: // NEXT?
             () => {
-              store(x=mem[objects+op0*9+5]);
+              store(x = mem[objects + op0 * 9 + 5]);
               predicate(x);
             },
             130: // FIRST?
             () => {
-              store(x=mem[objects+op0*9+6]);
+              store(x = mem[objects + op0 * 9 + 6]);
               predicate(x);
             },
             131: // LOC
             () => {
-              store(mem[objects+op0*9+4]);
+              store(mem[objects + op0 * 9 + 4]);
             },
             132: // PTSIZE
             () => {
-              store((mem[(op0-1)&65535]>>5)+1);
+              store((mem[(op0 - 1) & 65535] >> 5) + 1);
             },
             133: // INC
-            () => {
-              x=xfetch(op0);
-              xstore(op0,x+1);
+            (loc) => {
+              x = xfetch(loc);
+              xstore(loc, x + 1);
             },
             134: // DEC
-            () => {
-              x=xfetch(op0);
-              xstore(op0,x-1);
+            (loc) => {
+              x=xfetch(loc);
+              xstore(loc, x - 1);
             },
             137: // REMOVE
             () => {
-              move(op0,0);
+              move(op0, 0);
             },
             139: // RETURN
-            () => {
-              ret(op0);
+            (retval) => {
+              ret(retval);
             },
             140: // JUMP
-            () => {
-              pc+=op0-2;
+            (offset) => {
+              pc += offset - 2;
             },
             142: // VALUE
-            () => {
-              store(xfetch(op0));
+            (loc) => {
+              store(xfetch(loc));
             },
-            143: // BCOM
-            () => {
-              store(~op0);
+            143: // BCOM (binary complement)
+            (a) => {
+              store(~a);
             },
             176: // RTRUE
             () => {
@@ -716,56 +716,60 @@ JSZM.prototype = {
             224: // CALL
             () => {
               if(op0) {
-                x=mem[op0=addr(op0)];
-                cs.unshift({ds:ds,pc:pc,local:new Int16Array(x)});
-                ds=[];
-                pc=op0+1;
-                for(x=0;x<mem[op0];x++) cs[0].local[x]=pcget();
-                if(opc>1 && mem[op0]>0) cs[0].local[0]=op1;
-                if(opc>2 && mem[op0]>1) cs[0].local[1]=op2;
-                if(opc>3 && mem[op0]>2) cs[0].local[2]=op3;
+                x = mem[op0 = addr(op0)];
+                cs.unshift({ds: ds, pc: pc, local: new Int16Array(x)});
+                ds = [];
+                pc = op0 + 1;
+                for (x = 0; x < mem[op0]; x++)
+                  cs[0].local[x] = pcget();
+                if (opc > 1 && mem[op0] > 0)
+                  cs[0].local[0] = op1;
+                if (opc > 2 && mem[op0] > 1)
+                  cs[0].local[1] = op2;
+                if (opc > 3 && mem[op0] > 2)
+                  cs[0].local[2] = op3;
               } else {
                 store(0);
               }
             },
             225: // PUT
             () => {
-              this.put((op0+op1*2)&65535,op2);
+              this.put((op0 + op1 * 2) & 65535, op2);
             },
             226: // PUTB
             () => {
-              mem[(op0+op1)&65535]=op2;
+              mem[(op0 + op1) & 65535] = op2;
             },
             227: // PUTP
             () => {
               propfind();
-              if (mem[op3-1]&32) {
-                this.put(op3,op2);
+              if (mem[op3 - 1] & 32) {
+                this.put(op3, op2);
               } else {
-                mem[op3]=op2;
+                mem[op3] = op2;
               }
             },
             231: // RANDOM
-            () => {
-              if (op0 <= 0) {               // If 'op0' is non-positive, reseed the PRNG.
-                if (op0 === 0) {
+            (range) => {
+              if (range <= 0) {             // If range is non-positive, reseed the PRNG.
+                if (range === 0) {
                   initRng();                // If 0, seed using Math.random().
                 } else {
-                  this.seed = (op0 >>> 0);  // If negative, seed with the specified value.
+                  this.seed = (range >>> 0); // If negative, seed with the specified value.
                 }
                 store(0);                   // Reseeding always returns 0.
-                return;
+              } else {
+                this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
+                store(Math.floor((this.seed / 0xFFFFFFFF) * range) + 1);  // Return integer in range [1..op0] (inclusive).
               }
-              this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
-              store(Math.floor((this.seed / 0xFFFFFFFF) * op0) + 1);    // Return integer in range [1..op0] (inclusive).
             },
             232: // PUSH
-            () => {
-              ds.push(op0);
+            (a) => {
+              ds.push(a);
             },
             233: // POP
-            () => {
-              xstore(op0,ds.pop());
+            (loc) => {
+              xstore(loc, ds.pop());
             }
           };
 
