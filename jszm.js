@@ -767,20 +767,20 @@ JSZM.prototype = {
               predicate(this.verify());
             },
             224: // CALL
-            () => { /* vararg */
-              if(op0) {
-                const tmp = mem[op0 = addr(op0)];
+            (method, ...params) => { /* vararg */
+              if(method) {
+                const tmp = mem[method = addr(method)];
                 cs.unshift({ds: ds, pc: pc, local: new Int16Array(tmp)});
                 ds = [];
-                pc = op0 + 1;
-                for (let i = 0; i < mem[op0]; i++)
+                pc = method + 1;
+                for (let i = 0; i < mem[method]; i++)
                   cs[0].local[i] = pcget();
-                if (opc > 1 && mem[op0] > 0)
-                  cs[0].local[0] = op1;
-                if (opc > 2 && mem[op0] > 1)
-                  cs[0].local[1] = op2;
-                if (opc > 3 && mem[op0] > 2)
-                  cs[0].local[2] = op3;
+                if (params.length > 0 && typeof params[0] !== "undefined" && mem[method] > 0)
+                  cs[0].local[0] = params[0];
+                if (params.length > 1 && typeof params[1] !== "undefined" && mem[method] > 1)
+                  cs[0].local[1] = params[1];
+                if (params.length > 2 && typeof params[2] !== "undefined" && mem[method] > 2)
+                  cs[0].local[2] = params[2];
               } else {
                 store(0);
               }
