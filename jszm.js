@@ -170,7 +170,7 @@ JSZM.prototype = {
   get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
 
   getText: function(addr) {
-    var o=""; // output
+    var output = ""; // output
     var ps=0; // permanent shift
     var ts=0; // temporary shift
     var w; // read each 16-bits data
@@ -181,14 +181,14 @@ JSZM.prototype = {
         ts=4;
       } else if(ts==4) {
         y+=v;
-        if(y==13) o+="\n";
-        else if(y) o+=String.fromCharCode(y);
+        if(y==13) output += "\n";
+        else if(y) output += String.fromCharCode(y);
         ts=ps;
       } else if(ts==5) {
-        o+=this.getText(this.getu(this.fwords+(y+v)*2)*2);
+        output += this.getText(this.getu(this.fwords+(y+v)*2)*2);
         ts=ps;
       } else if(v==0) {
-        o+=" ";
+        output += " ";
       } else if(v<4) {
         ts=5;
         y=(v-1)*32;
@@ -199,7 +199,7 @@ JSZM.prototype = {
       } else if(v==6 && ts==2) {
         ts=3;
       } else {
-        o+="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[ts*26+v-6];
+        output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[ts*26+v-6];
         ts=ps;
       }
     };
@@ -212,7 +212,7 @@ JSZM.prototype = {
       if(w&32768) break;
     }
     this.endText=addr;
-    return o;
+    return output;
   },
   getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
   handleInput: function(str,t1,t2) {
