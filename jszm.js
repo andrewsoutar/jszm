@@ -452,19 +452,19 @@ JSZM.prototype = {
         case 135: // PRINTB
           /* unary */
           {
-            yield* this.genPrint(this.getText(op0&65535));
+            yield* this.genPrint(this.getText(parameters[0] & 65535));
           }
           break;
         case 138: // PRINTD
           /* unary */
           {
-            yield* this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
+            yield* this.genPrint(this.getText(this.getu(objects + parameters[0] * 9 + 7) + 1));
           }
           break;
         case 141: // PRINT
           /* unary */
           {
-            yield* this.genPrint(this.getText(addr(op0)));
+            yield* this.genPrint(this.getText(addr(parameters[0])));
           }
           break;
         case 178: // PRINTI
@@ -529,31 +529,36 @@ JSZM.prototype = {
             yield*this.genPrint("");
             if (this.updateStatusLine)
               yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-            this.handleInput(yield*this.read(mem[op0&65535]),op0&65535,op1&65535);
+            this.handleInput(yield* this.read(mem[parameters[0] & 65535]),
+                             parameters[0] & 65535,
+                             parameters[1] & 65535);
           }
           break;
         case 229: // PRINTC
           /* vararg */
           {
-            yield* this.genPrint(op0 == 13 ? "\n" : op0 ? String.fromCharCode(op0) : "");
+            yield* this.genPrint(parameters[0] == 13 ? "\n" :
+                                 parameters[0] ? String.fromCharCode(parameters[0]) : "");
           }
           break;
         case 230: // PRINTN
           /* vararg */
           {
-            yield* this.genPrint(String(op0));
+            yield* this.genPrint(String(parameters[0]));
           }
           break;
         case 234: // SPLIT
           /* vararg */
           {
-            if(this.split) yield*this.split(op0);
+            if(this.split)
+              yield* this.split(parameters[0]);
           }
           break;
         case 235: // SCREEN
           /* vararg */
           {
-            if(this.screen) yield*this.screen(op0);
+            if(this.screen)
+              yield* this.screen(parameters[0]);
           }
           break;
         case 186: // QUIT
@@ -604,63 +609,69 @@ JSZM.prototype = {
               store(a & b);
             },
             10: // FSET?
-            () => { /* vararg */
-              let opcNonshared;
-              [opcNonshared, op2, op3] = flagset(op0, op1);
-              predicate(opcNonshared & op3);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+              op2 = op2Nonshared;
+              op3 = op3Nonshared;
+              predicate(opcNonshared & op3Nonshared);
             },
             11: // FSET
-            () => { /* vararg */
-              let opcNonshared;
-              [opcNonshared, op2, op3] = flagset(op0, op1);
-              this.put(op2, opcNonshared | op3);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+              op2 = op2Nonshared;
+              op3 = op3Nonshared;
+              this.put(op2Nonshared, opcNonshared | op3Nonshared);
             },
             12: // FCLEAR
-            () => { /* vararg */
-              let opcNonshared;
-              [opcNonshared, op2, op3] = flagset(op0, op1);
-              this.put(op2, opcNonshared & ~op3);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+              op2 = op2Nonshared;
+              op3 = op3Nonshared;
+              this.put(op2Nonshared, opcNonshared & ~op3Nonshared);
             },
             13: // SET
             (loc, value) => { /* vararg */
               xstore(loc, value);
             },
             14: // MOVE
-            () => { /* vararg */
-              move(op0, op1);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              move(op0Nonshared, op1Nonshared);
             },
             15: // GET
-            () => { /* vararg */
-              store(this.get((op0 + op1 * 2) & 65535));
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              store(this.get((op0Nonshared + op1Nonshared * 2) & 65535));
             },
             16: // GETB
-            () => { /* vararg */
-              store(mem[(op0 + op1) & 65535]);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              store(mem[(op0Nonshared + op1Nonshared) & 65535]);
             },
             17: // GETP
-            () => { /* vararg */
-              let found;
-              [found, op3] = propfind(op0, op1);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              let found, op3Nonshared;
+              [found, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+              op3 = op3Nonshared;
               if (found) {
-                store(mem[op3 - 1] & 32 ? this.get(op3) : mem[op3]);
+                store(mem[op3Nonshared - 1] & 32 ? this.get(op3Nonshared) : mem[op3Nonshared]);
               } else {
-                store(this.get(defprop + 2 * op1));
+                store(this.get(defprop + 2 * op1Nonshared));
               }
             },
             18: // GETPT
-            () => { /* vararg */
-              [, op3] = propfind(op0, op1);
-              store(op3);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+              op3 = op3Nonshared;
+              store(op3Nonshared);
             },
             19: // NEXTP
-            () => { /* vararg */
-              if (op1) {
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              if (op1Nonshared) {
                 // Return next property
-                [, op3] = propfind(op0, op1);
-                store(mem[op3 + (mem[op3 - 1] >> 5) + 1] & 31);
+                const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+                op3 = op3Nonshared;
+                store(mem[op3Nonshared + (mem[op3Nonshared - 1] >> 5) + 1] & 31);
               } else {
                 // Return first property
-                const firstProp = this.getu(objects + op0 * 9 + 7); /* FIXME I'm trusting the comment here to name the variable - I have no clue what this actually does */
+                const firstProp = this.getu(objects + op0Nonshared * 9 + 7); /* FIXME I'm trusting the comment here to name the variable - I have no clue what this actually does */
                 store(mem[firstProp + mem[firstProp] * 2 + 1] & 31);
               }
             },
@@ -689,24 +700,24 @@ JSZM.prototype = {
               predicate(!a);
             },
             129: // NEXT?
-            () => { /* unary */
-              const result = mem[objects + op0 * 9 + 5];
+            (op0Nonshared) => { /* unary */
+              const result = mem[objects + op0Nonshared * 9 + 5];
               store(result);
               predicate(result);
             },
             130: // FIRST?
-            () => { /* unary */
-              const result = mem[objects + op0 * 9 + 6];
+            (op0Nonshared) => { /* unary */
+              const result = mem[objects + op0Nonshared * 9 + 6];
               store(result);
               predicate(result);
             },
             131: // LOC
-            () => { /* unary */
-              store(mem[objects + op0 * 9 + 4]);
+            (op0Nonshared) => { /* unary */
+              store(mem[objects + op0Nonshared * 9 + 4]);
             },
             132: // PTSIZE
-            () => { /* unary */
-              store((mem[(op0 - 1) & 65535] >> 5) + 1);
+            (op0Nonshared) => { /* unary */
+              store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
             },
             133: // INC
             (loc) => { /* unary */
@@ -719,8 +730,8 @@ JSZM.prototype = {
               xstore(loc, tmp - 1);
             },
             137: // REMOVE
-            () => { /* unary */
-              move(op0, 0);
+            (op0Nonshared) => { /* unary */
+              move(op0Nonshared, 0);
             },
             139: // RETURN
             (retval) => { /* unary */
@@ -780,20 +791,21 @@ JSZM.prototype = {
               }
             },
             225: // PUT
-            () => { /* vararg */
-              this.put((op0 + op1 * 2) & 65535, op2);
+            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+              this.put((op0Nonshared + op1Nonshared * 2) & 65535, op2Nonshared);
             },
             226: // PUTB
-            () => { /* vararg */
-              mem[(op0 + op1) & 65535] = op2;
+            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+              mem[(op0Nonshared + op1Nonshared) & 65535] = op2Nonshared;
             },
             227: // PUTP
-            () => { /* vararg */
-              [, op3] = propfind(op0, op1);
-              if (mem[op3 - 1] & 32) {
-                this.put(op3, op2);
+            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+              const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+              op3 = op3Nonshared;
+              if (mem[op3Nonshared - 1] & 32) {
+                this.put(op3Nonshared, op2Nonshared);
               } else {
-                mem[op3] = op2;
+                mem[op3Nonshared] = op2Nonshared;
               }
             },
             231: // RANDOM
