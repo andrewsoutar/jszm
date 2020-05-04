@@ -267,7 +267,7 @@ JSZM.prototype = {
   restore: ()=>[],
 
   run: function*() {
-    var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,x,y,z;
+    var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,y,z;
     var globals,objects,fwords,defprop;
     var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
 
@@ -409,22 +409,22 @@ JSZM.prototype = {
         [op0, op1] = parameters;
       } else if (inst < 0xB0) {
         // 1OP
-        x = (inst >> 4) & 3;
+        const paramType = (inst >> 4) & 3;
         inst &= 0x8F; /* gives inst = 0b1000xxxx - [128..143] */
         parameters = [
-          (x == 0) ? pcget() :
-          (x == 1) ? pcgetb() :
-          (x == 2) ? pcfetch() : op0
+          (paramType == 0) ? pcget() :
+          (paramType == 1) ? pcgetb() :
+          (paramType == 2) ? pcfetch() : op0
         ];
         [op0] = parameters;
       } else if (inst >= 0xC0) {
         // EXT
-        x = pcgetb();
+        const paramTypes = pcgetb();
         parameters = [
-          opfetch(x >> 6, 1),
-          opfetch(x >> 4, 2),
-          opfetch(x >> 2, 3),
-          opfetch(x >> 0, 4)
+          opfetch(paramTypes >> 6, 1),
+          opfetch(paramTypes >> 4, 2),
+          opfetch(paramTypes >> 2, 3),
+          opfetch(paramTypes >> 0, 4)
         ].slice(0, opc);
         if (inst < 0xE0)
           inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
@@ -572,13 +572,15 @@ JSZM.prototype = {
             },
             4: // DLESS?
             (a, b) => { /* vararg */
-              xstore(a, x = xfetch(a) - 1);
-              predicate(x < b);
+              const tmp = xfetch(a) - 1;
+              xstore(a, tmp);
+              predicate(tmp < b);
             },
             5: // IGRTR?
             (a, b) => { /* vararg */
-              xstore(a, x = xfetch(a) + 1);
-              predicate(x > b);
+              const tmp = xfetch(a) + 1;
+              xstore(a, tmp);
+              predicate(tmp > b);
             },
             6: // IN?
             () => { /* vararg */
@@ -648,8 +650,8 @@ JSZM.prototype = {
                 store(mem[op3 + (mem[op3 - 1] >> 5) + 1] & 31);
               } else {
                 // Return first property
-                x = this.getu(objects + op0 * 9 + 7);
-                store(mem[x + mem[x] * 2 + 1] & 31);
+                const firstProp = this.getu(objects + op0 * 9 + 7); /* FIXME I'm trusting the comment here to name the variable - I have no clue what this actually does */
+                store(mem[firstProp + mem[firstProp] * 2 + 1] & 31);
               }
             },
             20: // ADD
@@ -678,13 +680,15 @@ JSZM.prototype = {
             },
             129: // NEXT?
             () => { /* unary */
-              store(x = mem[objects + op0 * 9 + 5]);
-              predicate(x);
+              const result = mem[objects + op0 * 9 + 5];
+              store(result);
+              predicate(result);
             },
             130: // FIRST?
             () => { /* unary */
-              store(x = mem[objects + op0 * 9 + 6]);
-              predicate(x);
+              const result = mem[objects + op0 * 9 + 6];
+              store(result);
+              predicate(result);
             },
             131: // LOC
             () => { /* unary */
@@ -696,13 +700,13 @@ JSZM.prototype = {
             },
             133: // INC
             (loc) => { /* unary */
-              x = xfetch(loc);
-              xstore(loc, x + 1);
+              const tmp = xfetch(loc);
+              xstore(loc, tmp + 1);
             },
             134: // DEC
             (loc) => { /* unary */
-              x=xfetch(loc);
-              xstore(loc, x - 1);
+              const tmp = xfetch(loc);
+              xstore(loc, tmp - 1);
             },
             137: // REMOVE
             () => { /* unary */
@@ -749,12 +753,12 @@ JSZM.prototype = {
             224: // CALL
             () => { /* vararg */
               if(op0) {
-                x = mem[op0 = addr(op0)];
-                cs.unshift({ds: ds, pc: pc, local: new Int16Array(x)});
+                const tmp = mem[op0 = addr(op0)];
+                cs.unshift({ds: ds, pc: pc, local: new Int16Array(tmp)});
                 ds = [];
                 pc = op0 + 1;
-                for (x = 0; x < mem[op0]; x++)
-                  cs[0].local[x] = pcget();
+                for (let i = 0; i < mem[op0]; i++)
+                  cs[0].local[i] = pcget();
                 if (opc > 1 && mem[op0] > 0)
                   cs[0].local[0] = op1;
                 if (opc > 2 && mem[op0] > 1)
