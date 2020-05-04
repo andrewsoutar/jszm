@@ -421,7 +421,7 @@ JSZM.prototype = {
       } else if (inst >= 0xC0) {
         // EXT
         const paramTypes = pcgetb();
-        let opcNonshared = opc;
+        let opcNonshared = 0;
         const opfetch = (opType, opNum) => {
           opType &= 3;
           if (opType != 3)
