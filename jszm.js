@@ -396,39 +396,42 @@ JSZM.prototype = {
     // Main loop
     main: for(;;) {
       inst = pcgetb();
+
+      let parameters = null;
       if (inst <= 0x7F) {
         // 2OP
-        if (inst & 0x40)
-          op0 = pcfetch();
-        else
-          op0 = pcgetb();
-        if (inst & 0x20)
-          op1 = pcfetch();
-        else
-          op1 = pcgetb();
+        parameters = [
+          (inst & 0x40) ? pcfetch() : pcgetb(),
+          (inst & 0x20) ? pcfetch() : pcgetb()
+        ];
         inst &= 0x1F;
-        opc = 2;
+
+        [op0, op1] = parameters;
       } else if (inst < 0xB0) {
         // 1OP
         x = (inst >> 4) & 3;
         inst &= 0x8F;
-        if (x == 0)
-          op0 = pcget();
-        else if (x == 1)
-          op0 = pcgetb();
-        else if (x == 2)
-          op0 = pcfetch();
-        opc = 1;
+        parameters = [
+          (x == 0) ? pcget() :
+          (x == 1) ? pcgetb() :
+          (x == 2) ? pcfetch() : op0
+        ];
+        [op0] = parameters;
       } else if(inst >= 0xC0) {
         // EXT
         x = pcgetb();
-        op0 = opfetch(x >> 6, 1);
-        op1 = opfetch(x >> 4, 2);
-        op2 = opfetch(x >> 2, 3);
-        op3 = opfetch(x >> 0, 4);
+        parameters = [
+          opfetch(x >> 6, 1),
+          opfetch(x >> 4, 2),
+          opfetch(x >> 2, 3),
+          opfetch(x >> 0, 4)
+        ].slice(0, opc);
         if (inst < 0xE0)
           inst &= 0x1F;
+        [op0, op1, op2, op3] = parameters;
       }
+      if (parameters != null)
+        opc = parameters.length;
 
       switch(inst) {
           /* These instructions can yield and will be ported later */
