@@ -568,7 +568,7 @@ JSZM.prototype = {
             /* These instructions do not and are safe to port */
             1: // EQUAL?
             (key, ...values) => { /* vararg */
-              predicate(key == values[0] || (opc > 2 && key == values[1]) || (opc == 4 && key == values[2]));
+              predicate(typeof key === "undefined" || values.includes(key));
             },
             2: // LESS?
             (a, b) => { /* vararg */
