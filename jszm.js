@@ -267,7 +267,7 @@ JSZM.prototype = {
   restore: ()=>[],
 
   run: function*() {
-    var mem,pc,cs,ds,inst,y,z;
+    var mem,pc,cs,ds,y,z;
     var globals,objects,fwords,defprop;
     var addr,fetch,flagset,init,move,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
 
@@ -389,7 +389,7 @@ JSZM.prototype = {
 
     // Main loop
     main: for(;;) {
-      inst = pcgetb();
+      let inst = pcgetb();
 
       let parameters = [];
       if (inst <= 0x7F) {
