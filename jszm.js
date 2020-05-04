@@ -608,18 +608,24 @@ JSZM.prototype = {
             },
             10: // FSET?
             () => { /* vararg */
-              [opc, op2, op3] = flagset(op0, op1);
-              predicate(opc & op3);
+              let opcNonshared;
+              [opcNonshared, op2, op3] = flagset(op0, op1);
+              opc = opcNonshared;
+              predicate(opcNonshared & op3);
             },
             11: // FSET
             () => { /* vararg */
-              [opc, op2, op3] = flagset(op0, op1);
-              this.put(op2, opc | op3);
+              let opcNonshared;
+              [opcNonshared, op2, op3] = flagset(op0, op1);
+              opc = opcNonshared;
+              this.put(op2, opcNonshared | op3);
             },
             12: // FCLEAR
             () => { /* vararg */
-              [opc, op2, op3] = flagset(op0, op1);
-              this.put(op2, opc & ~op3);
+              let opcNonshared;
+              [opcNonshared, op2, op3] = flagset(op0, op1);
+              opc = opcNonshared
+              this.put(op2, opcNonshared & ~op3);
             },
             13: // SET
             (loc, value) => { /* vararg */
