@@ -770,7 +770,7 @@ JSZM.prototype = {
           };
 
           if (definedInstructions.hasOwnProperty(inst)) {
-            definedInstructions[inst]();
+            definedInstructions[inst](op0, op1, op2, op3);
           } else {
             throw new Error("JSZM: Invalid Z-machine opcode");
           }
