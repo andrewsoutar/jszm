@@ -404,20 +404,20 @@ JSZM.prototype = {
           (inst & 0x40) ? pcfetch() : pcgetb(),
           (inst & 0x20) ? pcfetch() : pcgetb()
         ];
-        inst &= 0x1F;
+        inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
 
         [op0, op1] = parameters;
       } else if (inst < 0xB0) {
         // 1OP
         x = (inst >> 4) & 3;
-        inst &= 0x8F;
+        inst &= 0x8F; /* gives inst = 0b1000xxxx - [128..143] */
         parameters = [
           (x == 0) ? pcget() :
           (x == 1) ? pcgetb() :
           (x == 2) ? pcfetch() : op0
         ];
         [op0] = parameters;
-      } else if(inst >= 0xC0) {
+      } else if (inst >= 0xC0) {
         // EXT
         x = pcgetb();
         parameters = [
@@ -427,48 +427,64 @@ JSZM.prototype = {
           opfetch(x >> 0, 4)
         ].slice(0, opc);
         if (inst < 0xE0)
-          inst &= 0x1F;
+          inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
+        /* Otherwise, gives inst = 0b111xxxxx - [224..255] */
         [op0, op1, op2, op3] = parameters;
       }
+      /* Otherwise, gives inst = 0b101xxxxx - [160..191] */
       if (parameters != null)
         opc = parameters.length;
+
+      /* Operation parameter ranges, for below:
+       * [000..031] :: 2 parameters, or variable parameters
+       * [128..143] :: 0 or 1 parameter (assume 1?)
+       * [160..191] :: no parsed parameters
+       * [224..255] :: variable parameters
+       */
 
       switch(inst) {
           /* These instructions can yield and will be ported later */
         case 135: // PRINTB
+          /* unary */
           {
             yield* this.genPrint(this.getText(op0&65535));
           }
           break;
         case 138: // PRINTD
+          /* unary */
           {
             yield* this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
           }
           break;
         case 141: // PRINT
+          /* unary */
           {
             yield* this.genPrint(this.getText(addr(op0)));
           }
           break;
         case 178: // PRINTI
+          /* void */
           {
             yield* this.genPrint(this.getText(pc));
             pc=this.endText;
           }
           break;
         case 179: // PRINTR
+          /* void */
           {
             yield* this.genPrint(this.getText(pc) + "\n");
             ret(1);
           }
           break;
         case 181: // SAVE
+          /* void */
           {
             this.savedFlags = this.get(16);
             predicate(yield* this.save(this.serialize(ds,cs,pc)));
           }
           break;
         case 182: // RESTORE
+          /* void */
           {
             this.savedFlags = this.get(16);
             if (z = yield* this.restore())
@@ -483,23 +499,27 @@ JSZM.prototype = {
           }
           break;
         case 183: // RESTART
+          /* void */
           {
             init();
             yield* this.restarted();
           }
           break;
         case 187: // CRLF
+          /* void */
           {
             yield* this.genPrint("\n");
           }
           break;
-        case 188: // USL
+        case 188: // USL (update status line)
+          /* void */
           {
             if (this.updateStatusLine)
               yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
           }
           break;
         case 228: // READ
+          /* vararg */
           {
             yield*this.genPrint("");
             if (this.updateStatusLine)
@@ -508,102 +528,107 @@ JSZM.prototype = {
           }
           break;
         case 229: // PRINTC
+          /* vararg */
           {
             yield* this.genPrint(op0 == 13 ? "\n" : op0 ? String.fromCharCode(op0) : "");
           }
           break;
         case 230: // PRINTN
+          /* vararg */
           {
             yield* this.genPrint(String(op0));
           }
           break;
         case 234: // SPLIT
+          /* vararg */
           {
             if(this.split) yield*this.split(op0);
           }
           break;
         case 235: // SCREEN
+          /* vararg */
           {
             if(this.screen) yield*this.screen(op0);
           }
           break;
         case 186: // QUIT
+          /* void */
           return;
 
         default:
           const definedInstructions = {
             /* These instructions do not and are safe to port */
             1: // EQUAL?
-            () => {
+            () => { /* vararg */
               predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
             },
             2: // LESS?
-            (a, b) => {
+            (a, b) => { /* vararg */
               predicate(a < b);
             },
             3: // GRTR?
-            (a, b) => {
+            (a, b) => { /* vararg */
               predicate(a > b);
             },
             4: // DLESS?
-            (a, b) => {
+            (a, b) => { /* vararg */
               xstore(a, x = xfetch(a) - 1);
               predicate(x < b);
             },
             5: // IGRTR?
-            (a, b) => {
+            (a, b) => { /* vararg */
               xstore(a, x = xfetch(a) + 1);
               predicate(x > b);
             },
             6: // IN?
-            () => {
+            () => { /* vararg */
               predicate(mem[objects + op0 * 9 + 4] == op1);
             },
             7: // BTST
-            (a, bits) => {
+            (a, bits) => { /* vararg */
               predicate((a & bits) == bits);
             },
             8: // BOR
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(a | b);
             },
             9: // BAND
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(a & b);
             },
             10: // FSET?
-            () => {
+            () => { /* vararg */
               flagset();
               predicate(opc & op3);
             },
             11: // FSET
-            () => {
+            () => { /* vararg */
               flagset();
               this.put(op2, opc | op3);
             },
             12: // FCLEAR
-            () => {
+            () => { /* vararg */
               flagset();
               this.put(op2, opc & ~op3);
             },
             13: // SET
-            (loc, value) => {
+            (loc, value) => { /* vararg */
               xstore(loc, value);
             },
             14: // MOVE
-            () => {
+            () => { /* vararg */
               move(op0, op1);
             },
             15: // GET
-            () => {
+            () => { /* vararg */
               store(this.get((op0 + op1 * 2) & 65535));
             },
             16: // GETB
-            () => {
+            () => { /* vararg */
               store(mem[(op0 + op1) & 65535]);
             },
             17: // GETP
-            () => {
+            () => { /* vararg */
               if (propfind()) {
                 store(mem[op3-1] & 32 ? this.get(op3) : mem[op3]);
               } else {
@@ -611,12 +636,12 @@ JSZM.prototype = {
               }
             },
             18: // GETPT
-            () => {
+            () => { /* vararg */
               propfind();
               store(op3);
             },
             19: // NEXTP
-            () => {
+            () => { /* vararg */
               if (op1) {
                 // Return next property
                 propfind();
@@ -628,101 +653,101 @@ JSZM.prototype = {
               }
             },
             20: // ADD
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(a + b);
             },
             21: // SUB
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(a - b);
             },
             22: // MUL
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(Math.imul(a, b));
             },
             23: // DIV
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(Math.trunc(a / b));
             },
             24: // MOD
-            (a, b) => {
+            (a, b) => { /* vararg */
               store(a % b);
             },
             128: // ZERO?
-            (a) => {
+            (a) => { /* unary */
               predicate(!a);
             },
             129: // NEXT?
-            () => {
+            () => { /* unary */
               store(x = mem[objects + op0 * 9 + 5]);
               predicate(x);
             },
             130: // FIRST?
-            () => {
+            () => { /* unary */
               store(x = mem[objects + op0 * 9 + 6]);
               predicate(x);
             },
             131: // LOC
-            () => {
+            () => { /* unary */
               store(mem[objects + op0 * 9 + 4]);
             },
             132: // PTSIZE
-            () => {
+            () => { /* unary */
               store((mem[(op0 - 1) & 65535] >> 5) + 1);
             },
             133: // INC
-            (loc) => {
+            (loc) => { /* unary */
               x = xfetch(loc);
               xstore(loc, x + 1);
             },
             134: // DEC
-            (loc) => {
+            (loc) => { /* unary */
               x=xfetch(loc);
               xstore(loc, x - 1);
             },
             137: // REMOVE
-            () => {
+            () => { /* unary */
               move(op0, 0);
             },
             139: // RETURN
-            (retval) => {
+            (retval) => { /* unary */
               ret(retval);
             },
             140: // JUMP
-            (offset) => {
+            (offset) => { /* unary */
               pc += offset - 2;
             },
             142: // VALUE
-            (loc) => {
+            (loc) => { /* unary */
               store(xfetch(loc));
             },
             143: // BCOM (binary complement)
-            (a) => {
+            (a) => { /* unary */
               store(~a);
             },
             176: // RTRUE
-            () => {
+            () => { /* void */
               ret(1);
             },
             177: // RFALSE
-            () => {
+            () => { /* void */
               ret(0);
             },
             180: // NOOP
-            () => {},
+            () => {}, /* void */
             184: // RSTACK
-            () => {
+            () => { /* void */
               ret(ds[ds.length-1]);
             },
             185: // FSTACK
-            () => {
+            () => { /* void */
               ds.pop();
             },
             189: // VERIFY
-            () => {
+            () => { /* void */
               predicate(this.verify());
             },
             224: // CALL
-            () => {
+            () => { /* vararg */
               if(op0) {
                 x = mem[op0 = addr(op0)];
                 cs.unshift({ds: ds, pc: pc, local: new Int16Array(x)});
@@ -741,15 +766,15 @@ JSZM.prototype = {
               }
             },
             225: // PUT
-            () => {
+            () => { /* vararg */
               this.put((op0 + op1 * 2) & 65535, op2);
             },
             226: // PUTB
-            () => {
+            () => { /* vararg */
               mem[(op0 + op1) & 65535] = op2;
             },
             227: // PUTP
-            () => {
+            () => { /* vararg */
               propfind();
               if (mem[op3 - 1] & 32) {
                 this.put(op3, op2);
@@ -758,7 +783,7 @@ JSZM.prototype = {
               }
             },
             231: // RANDOM
-            (range) => {
+            (range) => { /* vararg */
               if (range <= 0) {             // If range is non-positive, reseed the PRNG.
                 if (range === 0) {
                   initRng();                // If 0, seed using Math.random().
@@ -772,11 +797,11 @@ JSZM.prototype = {
               }
             },
             232: // PUSH
-            (a) => {
+            (a) => { /* vararg */
               ds.push(a);
             },
             233: // POP
-            (loc) => {
+            (loc) => { /* vararg */
               xstore(loc, ds.pop());
             }
           };
