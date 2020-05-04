@@ -387,7 +387,6 @@ JSZM.prototype = {
     yield* this.restarted();
     yield* this.highlight(!!(this.savedFlags&2));
 
-    let op0 = undefined;
     // Main loop
     main: for(;;) {
       inst = pcgetb();
@@ -400,8 +399,6 @@ JSZM.prototype = {
           (inst & 0x20) ? pcfetch() : pcgetb()
         ];
         inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
-
-        op0 = parameters[0];
       } else if (inst < 0xB0) {
         // 1OP
         const paramType = (inst >> 4) & 3;
@@ -409,9 +406,8 @@ JSZM.prototype = {
         parameters = [
           (paramType == 0) ? pcget() :
           (paramType == 1) ? pcgetb() :
-          (paramType == 2) ? pcfetch() : op0
+          (paramType == 2) ? pcfetch()
         ];
-        op0 = parameters[0];
       } else if (inst >= 0xC0) {
         // EXT
         const paramTypes = pcgetb();
@@ -431,14 +427,13 @@ JSZM.prototype = {
         if (inst < 0xE0)
           inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
         /* Otherwise, gives inst = 0b111xxxxx - [224..255] */
-        op0 = parameters[0];
       }
-      /* Otherwise, gives inst = 0b101xxxxx - [160..191] */
+      /* Otherwise, gives inst = 0b1011xxxx - [176..191] */
 
       /* Operation parameter ranges, for below:
        * [000..031] :: 2 parameters, or variable parameters
        * [128..143] :: 0 or 1 parameter (assume 1?)
-       * [160..191] :: no parsed parameters
+       * [176..191] :: no parsed parameters
        * [224..255] :: variable parameters
        */
 
