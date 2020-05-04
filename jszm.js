@@ -387,12 +387,12 @@ JSZM.prototype = {
     yield* this.restarted();
     yield* this.highlight(!!(this.savedFlags&2));
 
-    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined;
+    let op0 = undefined;
     // Main loop
     main: for(;;) {
       inst = pcgetb();
 
-      let parameters = null;
+      let parameters = [];
       if (inst <= 0x7F) {
         // 2OP
         parameters = [
@@ -401,9 +401,7 @@ JSZM.prototype = {
         ];
         inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
 
-        [op0, op1] = parameters;
-        op2 = undefined;
-        op3 = undefined;
+        op0 = parameters[0];
       } else if (inst < 0xB0) {
         // 1OP
         const paramType = (inst >> 4) & 3;
@@ -413,10 +411,7 @@ JSZM.prototype = {
           (paramType == 1) ? pcgetb() :
           (paramType == 2) ? pcfetch() : op0
         ];
-        [op0] = parameters;
-        op1 = undefined;
-        op2 = undefined;
-        op3 = undefined;
+        op0 = parameters[0];
       } else if (inst >= 0xC0) {
         // EXT
         const paramTypes = pcgetb();
@@ -436,7 +431,7 @@ JSZM.prototype = {
         if (inst < 0xE0)
           inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
         /* Otherwise, gives inst = 0b111xxxxx - [224..255] */
-        [op0, op1, op2, op3] = parameters;
+        op0 = parameters[0];
       }
       /* Otherwise, gives inst = 0b101xxxxx - [160..191] */
 
@@ -611,22 +606,16 @@ JSZM.prototype = {
             10: // FSET?
             (op0Nonshared, op1Nonshared) => { /* vararg */
               const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              op2 = op2Nonshared;
-              op3 = op3Nonshared;
               predicate(opcNonshared & op3Nonshared);
             },
             11: // FSET
             (op0Nonshared, op1Nonshared) => { /* vararg */
               const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              op2 = op2Nonshared;
-              op3 = op3Nonshared;
               this.put(op2Nonshared, opcNonshared | op3Nonshared);
             },
             12: // FCLEAR
             (op0Nonshared, op1Nonshared) => { /* vararg */
               const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              op2 = op2Nonshared;
-              op3 = op3Nonshared;
               this.put(op2Nonshared, opcNonshared & ~op3Nonshared);
             },
             13: // SET
@@ -649,7 +638,6 @@ JSZM.prototype = {
             (op0Nonshared, op1Nonshared) => { /* vararg */
               let found, op3Nonshared;
               [found, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              op3 = op3Nonshared;
               if (found) {
                 store(mem[op3Nonshared - 1] & 32 ? this.get(op3Nonshared) : mem[op3Nonshared]);
               } else {
@@ -659,7 +647,6 @@ JSZM.prototype = {
             18: // GETPT
             (op0Nonshared, op1Nonshared) => { /* vararg */
               const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              op3 = op3Nonshared;
               store(op3Nonshared);
             },
             19: // NEXTP
@@ -667,7 +654,6 @@ JSZM.prototype = {
               if (op1Nonshared) {
                 // Return next property
                 const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-                op3 = op3Nonshared;
                 store(mem[op3Nonshared + (mem[op3Nonshared - 1] >> 5) + 1] & 31);
               } else {
                 // Return first property
@@ -801,7 +787,6 @@ JSZM.prototype = {
             227: // PUTP
             (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
               const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              op3 = op3Nonshared;
               if (mem[op3Nonshared - 1] & 32) {
                 this.put(op3Nonshared, op2Nonshared);
               } else {
@@ -833,7 +818,7 @@ JSZM.prototype = {
           };
 
           if (definedInstructions.hasOwnProperty(inst)) {
-            definedInstructions[inst](op0, op1, op2, op3);
+            definedInstructions[inst](...parameters);
           } else {
             throw new Error("JSZM: Invalid Z-machine opcode");
           }
