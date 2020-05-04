@@ -426,253 +426,354 @@ JSZM.prototype = {
       }
 
       switch(inst) {
-        case 1: // EQUAL?
-          predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
-          break;
-        case 2: // LESS?
-          predicate(op0<op1);
-          break;
-        case 3: // GRTR?
-          predicate(op0>op1);
-          break;
-        case 4: // DLESS?
-          xstore(op0,x=xfetch(op0)-1);
-          predicate(x<op1);
-          break;
-        case 5: // IGRTR?
-          xstore(op0,x=xfetch(op0)+1);
-          predicate(x>op1);
-          break;
-        case 6: // IN?
-          predicate(mem[objects+op0*9+4]==op1);
-          break;
-        case 7: // BTST
-          predicate((op0&op1)==op1);
-          break;
-        case 8: // BOR
-          store(op0|op1);
-          break;
-        case 9: // BAND
-          store(op0&op1);
-          break;
-        case 10: // FSET?
-          flagset();
-          predicate(opc&op3);
-          break;
-        case 11: // FSET
-          flagset();
-          this.put(op2,opc|op3);
-          break;
-        case 12: // FCLEAR
-          flagset();
-          this.put(op2,opc&~op3);
-          break;
-        case 13: // SET
-          xstore(op0,op1);
-          break;
-        case 14: // MOVE
-          move(op0,op1);
-          break;
-        case 15: // GET
-          store(this.get((op0+op1*2)&65535));
-          break;
-        case 16: // GETB
-          store(mem[(op0+op1)&65535]);
-          break;
-        case 17: // GETP
-          if(propfind()) store(mem[op3-1]&32?this.get(op3):mem[op3]);
-          else store(this.get(defprop+2*op1));
-          break;
-        case 18: // GETPT
-          propfind();
-          store(op3);
-          break;
-        case 19: // NEXTP
-          if(op1) {
-            // Return next property
-            propfind();
-            store(mem[op3+(mem[op3-1]>>5)+1]&31);
-          } else {
-            // Return first property
-            x=this.getu(objects+op0*9+7);
-            store(mem[x+mem[x]*2+1]&31);
+          /* These instructions can yield and will be ported later */
+        case 135: // PRINTB
+          {
+            yield* this.genPrint(this.getText(op0&65535));
           }
           break;
-        case 20: // ADD
-          store(op0+op1);
-          break;
-        case 21: // SUB
-          store(op0-op1);
-          break;
-        case 22: // MUL
-          store(Math.imul(op0,op1));
-          break;
-        case 23: // DIV
-          store(Math.trunc(op0/op1));
-          break;
-        case 24: // MOD
-          store(op0%op1);
-          break;
-        case 128: // ZERO?
-          predicate(!op0);
-          break;
-        case 129: // NEXT?
-          store(x=mem[objects+op0*9+5]);
-          predicate(x);
-          break;
-        case 130: // FIRST?
-          store(x=mem[objects+op0*9+6]);
-          predicate(x);
-          break;
-        case 131: // LOC
-          store(mem[objects+op0*9+4]);
-          break;
-        case 132: // PTSIZE
-          store((mem[(op0-1)&65535]>>5)+1);
-          break;
-        case 133: // INC
-          x=xfetch(op0);
-          xstore(op0,x+1);
-          break;
-        case 134: // DEC
-          x=xfetch(op0);
-          xstore(op0,x-1);
-          break;
-        case 135: // PRINTB
-          yield*this.genPrint(this.getText(op0&65535));
-          break;
-        case 137: // REMOVE
-          move(op0,0);
-          break;
         case 138: // PRINTD
-          yield*this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
-          break;
-        case 139: // RETURN
-          ret(op0);
-          break;
-        case 140: // JUMP
-          pc+=op0-2;
+          {
+            yield* this.genPrint(this.getText(this.getu(objects+op0*9+7)+1));
+          }
           break;
         case 141: // PRINT
-          yield*this.genPrint(this.getText(addr(op0)));
-          break;
-        case 142: // VALUE
-          store(xfetch(op0));
-          break;
-        case 143: // BCOM
-          store(~op0);
-          break;
-        case 176: // RTRUE
-          ret(1);
-          break;
-        case 177: // RFALSE
-          ret(0);
+          {
+            yield* this.genPrint(this.getText(addr(op0)));
+          }
           break;
         case 178: // PRINTI
-          yield*this.genPrint(this.getText(pc));
-          pc=this.endText;
+          {
+            yield* this.genPrint(this.getText(pc));
+            pc=this.endText;
+          }
           break;
         case 179: // PRINTR
-          yield*this.genPrint(this.getText(pc)+"\n");
-          ret(1);
-          break;
-        case 180: // NOOP
+          {
+            yield* this.genPrint(this.getText(pc) + "\n");
+            ret(1);
+          }
           break;
         case 181: // SAVE
-          this.savedFlags=this.get(16);
-          predicate(yield*this.save(this.serialize(ds,cs,pc)));
+          {
+            this.savedFlags = this.get(16);
+            predicate(yield* this.save(this.serialize(ds,cs,pc)));
+          }
           break;
         case 182: // RESTORE
-          this.savedFlags=this.get(16);
-          if(z=yield*this.restore()) z=this.deserialize(z);
-          this.put(16,this.savedFlags);
-          if(z) ds=z[0],cs=z[1],pc=z[2];
-          predicate(z);
+          {
+            this.savedFlags = this.get(16);
+            if (z = yield* this.restore())
+              z = this.deserialize(z);
+            this.put(16, this.savedFlags);
+            if (z) {
+              ds = z[0];
+              cs = z[1];
+              pc = z[2];
+            }
+            predicate(z);
+          }
           break;
         case 183: // RESTART
-          init();
-          yield*this.restarted();
+          {
+            init();
+            yield* this.restarted();
+          }
           break;
-        case 184: // RSTACK
-          ret(ds[ds.length-1]);
+        case 187: // CRLF
+          {
+            yield* this.genPrint("\n");
+          }
           break;
-        case 185: // FSTACK
-          ds.pop();
+        case 188: // USL
+          {
+            if (this.updateStatusLine)
+              yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          }
+          break;
+        case 228: // READ
+          {
+            yield*this.genPrint("");
+            if (this.updateStatusLine)
+              yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+            this.handleInput(yield*this.read(mem[op0&65535]),op0&65535,op1&65535);
+          }
+          break;
+        case 229: // PRINTC
+          {
+            yield* this.genPrint(op0 == 13 ? "\n" : op0 ? String.fromCharCode(op0) : "");
+          }
+          break;
+        case 230: // PRINTN
+          {
+            yield* this.genPrint(String(op0));
+          }
+          break;
+        case 234: // SPLIT
+          {
+            if(this.split) yield*this.split(op0);
+          }
+          break;
+        case 235: // SCREEN
+          {
+            if(this.screen) yield*this.screen(op0);
+          }
           break;
         case 186: // QUIT
           return;
-        case 187: // CRLF
-          yield*this.genPrint("\n");
-          break;
-        case 188: // USL
-          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-          break;
-        case 189: // VERIFY
-          predicate(this.verify());
-          break;
-        case 224: // CALL
-          if(op0) {
-            x=mem[op0=addr(op0)];
-            cs.unshift({ds:ds,pc:pc,local:new Int16Array(x)});
-            ds=[];
-            pc=op0+1;
-            for(x=0;x<mem[op0];x++) cs[0].local[x]=pcget();
-            if(opc>1 && mem[op0]>0) cs[0].local[0]=op1;
-            if(opc>2 && mem[op0]>1) cs[0].local[1]=op2;
-            if(opc>3 && mem[op0]>2) cs[0].local[2]=op3;
-          } else {
-            store(0);
-          }
-          break;
-        case 225: // PUT
-          this.put((op0+op1*2)&65535,op2);
-          break;
-        case 226: // PUTB
-          mem[(op0+op1)&65535]=op2;
-          break;
-        case 227: // PUTP
-          propfind();
-          if(mem[op3-1]&32) this.put(op3,op2);
-          else mem[op3]=op2;
-          break;
-        case 228: // READ
-          yield*this.genPrint("");
-          if(this.updateStatusLine) yield*this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-          this.handleInput(yield*this.read(mem[op0&65535]),op0&65535,op1&65535);
-          break;
-        case 229: // PRINTC
-          yield*this.genPrint(op0==13?"\n":op0?String.fromCharCode(op0):"");
-          break;
-        case 230: // PRINTN
-          yield*this.genPrint(String(op0));
-          break;
-        case 231: // RANDOM
-          if (op0 <= 0) {               // If 'op0' is non-positive, reseed the PRNG.
-            if (op0 === 0) {
-              initRng();                // If 0, seed using Math.random().
-            } else {
-              this.seed = (op0 >>> 0);  // If negative, seed with the specified value.
-            }
-            store(0);                   // Reseeding always returns 0.
-            break;
-          }
-          this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
-          store(Math.floor((this.seed / 0xFFFFFFFF) * op0) + 1);    // Return integer in range [1..op0] (inclusive).
-          break;
-        case 232: // PUSH
-          ds.push(op0);
-          break;
-        case 233: // POP
-          xstore(op0,ds.pop());
-          break;
-        case 234: // SPLIT
-          if(this.split) yield*this.split(op0);
-          break;
-        case 235: // SCREEN
-          if(this.screen) yield*this.screen(op0);
-          break;
+
         default:
-          throw new Error("JSZM: Invalid Z-machine opcode");
+          const definedInstructions = {
+            /* These instructions do not and are safe to port */
+            1: // EQUAL?
+            () => {
+              predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
+            },
+            2: // LESS?
+            () => {
+              predicate(op0 < op1);
+            },
+            3: // GRTR?
+            () => {
+              predicate(op0 > op1);
+            },
+            4: // DLESS?
+            () => {
+              xstore(op0, x = xfetch(op0) - 1);
+              predicate(x < op1);
+            },
+            5: // IGRTR?
+            () => {
+              xstore(op0,x=xfetch(op0)+1);
+              predicate(x>op1);
+            },
+            6: // IN?
+            () => {
+              predicate(mem[objects+op0*9+4]==op1);
+            },
+            7: // BTST
+            () => {
+              predicate((op0&op1)==op1);
+            },
+            8: // BOR
+            () => {
+              store(op0|op1);
+            },
+            9: // BAND
+            () => {
+              store(op0&op1);
+            },
+            10: // FSET?
+            () => {
+              flagset();
+              predicate(opc&op3);
+            },
+            11: // FSET
+            () => {
+              flagset();
+              this.put(op2,opc|op3);
+            },
+            12: // FCLEAR
+            () => {
+              flagset();
+              this.put(op2,opc&~op3);
+            },
+            13: // SET
+            () => {
+              xstore(op0,op1);
+            },
+            14: // MOVE
+            () => {
+              move(op0,op1);
+            },
+            15: // GET
+            () => {
+              store(this.get((op0+op1*2)&65535));
+            },
+            16: // GETB
+            () => {
+              store(mem[(op0+op1)&65535]);
+            },
+            17: // GETP
+            () => {
+              if (propfind()) {
+                store(mem[op3-1]&32?this.get(op3):mem[op3]);
+              } else {
+                store(this.get(defprop+2*op1));
+              }
+            },
+            18: // GETPT
+            () => {
+              propfind();
+              store(op3);
+            },
+            19: // NEXTP
+            () => {
+              if (op1) {
+                // Return next property
+                propfind();
+                store(mem[op3+(mem[op3-1]>>5)+1]&31);
+              } else {
+                // Return first property
+                x=this.getu(objects+op0*9+7);
+                store(mem[x+mem[x]*2+1]&31);
+              }
+            },
+            20: // ADD
+            () => {
+              store(op0+op1);
+            },
+            21: // SUB
+            () => {
+              store(op0-op1);
+            },
+            22: // MUL
+            () => {
+              store(Math.imul(op0,op1));
+            },
+            23: // DIV
+            () => {
+              store(Math.trunc(op0/op1));
+            },
+            24: // MOD
+            () => {
+              store(op0%op1);
+            },
+            128: // ZERO?
+            () => {
+              predicate(!op0);
+            },
+            129: // NEXT?
+            () => {
+              store(x=mem[objects+op0*9+5]);
+              predicate(x);
+            },
+            130: // FIRST?
+            () => {
+              store(x=mem[objects+op0*9+6]);
+              predicate(x);
+            },
+            131: // LOC
+            () => {
+              store(mem[objects+op0*9+4]);
+            },
+            132: // PTSIZE
+            () => {
+              store((mem[(op0-1)&65535]>>5)+1);
+            },
+            133: // INC
+            () => {
+              x=xfetch(op0);
+              xstore(op0,x+1);
+            },
+            134: // DEC
+            () => {
+              x=xfetch(op0);
+              xstore(op0,x-1);
+            },
+            137: // REMOVE
+            () => {
+              move(op0,0);
+            },
+            139: // RETURN
+            () => {
+              ret(op0);
+            },
+            140: // JUMP
+            () => {
+              pc+=op0-2;
+            },
+            142: // VALUE
+            () => {
+              store(xfetch(op0));
+            },
+            143: // BCOM
+            () => {
+              store(~op0);
+            },
+            176: // RTRUE
+            () => {
+              ret(1);
+            },
+            177: // RFALSE
+            () => {
+              ret(0);
+            },
+            180: // NOOP
+            () => {},
+            184: // RSTACK
+            () => {
+              ret(ds[ds.length-1]);
+            },
+            185: // FSTACK
+            () => {
+              ds.pop();
+            },
+            189: // VERIFY
+            () => {
+              predicate(this.verify());
+            },
+            224: // CALL
+            () => {
+              if(op0) {
+                x=mem[op0=addr(op0)];
+                cs.unshift({ds:ds,pc:pc,local:new Int16Array(x)});
+                ds=[];
+                pc=op0+1;
+                for(x=0;x<mem[op0];x++) cs[0].local[x]=pcget();
+                if(opc>1 && mem[op0]>0) cs[0].local[0]=op1;
+                if(opc>2 && mem[op0]>1) cs[0].local[1]=op2;
+                if(opc>3 && mem[op0]>2) cs[0].local[2]=op3;
+              } else {
+                store(0);
+              }
+            },
+            225: // PUT
+            () => {
+              this.put((op0+op1*2)&65535,op2);
+            },
+            226: // PUTB
+            () => {
+              mem[(op0+op1)&65535]=op2;
+            },
+            227: // PUTP
+            () => {
+              propfind();
+              if (mem[op3-1]&32) {
+                this.put(op3,op2);
+              } else {
+                mem[op3]=op2;
+              }
+            },
+            231: // RANDOM
+            () => {
+              if (op0 <= 0) {               // If 'op0' is non-positive, reseed the PRNG.
+                if (op0 === 0) {
+                  initRng();                // If 0, seed using Math.random().
+                } else {
+                  this.seed = (op0 >>> 0);  // If negative, seed with the specified value.
+                }
+                store(0);                   // Reseeding always returns 0.
+                return;
+              }
+              this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
+              store(Math.floor((this.seed / 0xFFFFFFFF) * op0) + 1);    // Return integer in range [1..op0] (inclusive).
+            },
+            232: // PUSH
+            () => {
+              ds.push(op0);
+            },
+            233: // POP
+            () => {
+              xstore(op0,ds.pop());
+            }
+          };
+
+          if (definedInstructions.hasOwnProperty(inst)) {
+            definedInstructions[inst]();
+          } else {
+            throw new Error("JSZM: Invalid Z-machine opcode");
+          }
       }
     }
 
