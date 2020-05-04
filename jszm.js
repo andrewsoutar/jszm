@@ -387,8 +387,7 @@ JSZM.prototype = {
     yield* this.restarted();
     yield* this.highlight(!!(this.savedFlags&2));
 
-    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined,
-        opc = undefined;
+    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined;
     // Main loop
     main: for(;;) {
       inst = pcgetb();
@@ -440,8 +439,6 @@ JSZM.prototype = {
         [op0, op1, op2, op3] = parameters;
       }
       /* Otherwise, gives inst = 0b101xxxxx - [160..191] */
-      if (parameters != null)
-        opc = parameters.length;
 
       /* Operation parameter ranges, for below:
        * [000..031] :: 2 parameters, or variable parameters
@@ -610,21 +607,18 @@ JSZM.prototype = {
             () => { /* vararg */
               let opcNonshared;
               [opcNonshared, op2, op3] = flagset(op0, op1);
-              opc = opcNonshared;
               predicate(opcNonshared & op3);
             },
             11: // FSET
             () => { /* vararg */
               let opcNonshared;
               [opcNonshared, op2, op3] = flagset(op0, op1);
-              opc = opcNonshared;
               this.put(op2, opcNonshared | op3);
             },
             12: // FCLEAR
             () => { /* vararg */
               let opcNonshared;
               [opcNonshared, op2, op3] = flagset(op0, op1);
-              opc = opcNonshared
               this.put(op2, opcNonshared & ~op3);
             },
             13: // SET
