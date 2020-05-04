@@ -170,7 +170,7 @@ JSZM.prototype = {
   get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
 
   getText: function(addr) {
-    var output = ""; // output
+    var output = "";
     var ps=0; // permanent shift
     var ts=0; // temporary shift
     var w; // read each 16-bits data
