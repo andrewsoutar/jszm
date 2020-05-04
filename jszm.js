@@ -78,68 +78,104 @@
 
 "use strict";
 
-const JSZM_Version={major:2,minor:0,subminor:2,timestamp:1480624305074};
+const JSZM_Version = {
+  major: 2,
+  minor: 0,
+  subminor: 2,
+  timestamp: 1480624305074
+};
 
 function JSZM(arr) {
-  var mem;
-  mem=this.memInit=new Uint8Array(arr);
-  if(mem[0]!=3) throw new Error("Unsupported Z-code version.");
-  this.byteSwapped=!!(mem[1]&1);
-  this.statusType=!!(mem[1]&2);
-  this.serial=String.fromCharCode(...mem.slice(18,24));
-  this.zorkid=(mem[2]<<(this.byteSwapped?0:8))|(mem[3]<<(this.byteSwapped?8:0));
+  let mem = this.memInit = new Uint8Array(arr);
+  if (mem[0] != 3)
+    throw new Error("Unsupported Z-code version.");
+  this.byteSwapped = !!(mem[1] & 1);
+  this.statusType = !!(mem[1] & 2);
+  this.serial = String.fromCharCode(...mem.slice(18, 24));
+  this.zorkid = (mem[2] << (this.byteSwapped ? 0 : 8)) | (mem[3] << (this.byteSwapped ? 8 : 0));
 }
 
-JSZM.prototype={
+JSZM.prototype = {
   byteSwapped: false,
   constructor: JSZM,
+
   deserialize: function(ar) {
-    var e,i,j,ds,cs,pc,vi,purbot;
-    var g8,g16s,g16,g24,g32;
-    g8=()=>ar[e++];
-    g16s=()=>(e+=2,vi.getInt16(e-2));
-    g16=()=>(e+=2,vi.getUint16(e-2));
-    g24=()=>(e+=3,vi.getUint32(e-4)&0xFFFFFF);
-    g32=()=>(e+=4,vi.getUint32(e-4));
+    var e, i, j, ds, cs, pc, vi, purbot;
+
+    function getUint8() {
+      return ar[e++];
+    }
+    function getInt16() {
+      const val = vi.getInt16(e);
+      e += 2;
+      return val;
+    }
+    function getUint16() {
+      const val = vi.getUint16(e);
+      e += 2;
+      return val;
+    }
+    function getUint24() {
+      const val = vi.getUint32(e-1) & 0xFFFFFF;
+      e += 3;
+      return val;
+    }
+    function getUint32() {
+      const val = vi.getUint32(e);
+      e += 4;
+      return val;
+    }
+
+    let g8 = getUint8,
+        g16s = getInt16,
+        g16 = getUint16,
+        g24 = getUint24,
+        g32 = getUint32;
+
     try {
-      e=purbot=this.getu(14);
-      vi=new DataView(ar.buffer);
-      if(ar[2]!=this.mem[2] || ar[3]!=this.mem[3]) return null; // ZORKID does not match
-      pc=g32();
-      cs=new Array(g16());
-      ds=Array.from({length:g16()},g16s);
-      for(i=0;i<cs.length;i++) {
-        cs[i]={};
-        cs[i].local=new Int16Array(g8());
-        cs[i].pc=g24();
-        cs[i].ds=Array.from({length:g16()},g16s);
-        for(j=0;j<cs[i].local.length;j++) cs[i].local[j]=g16s();
+      e = purbot = this.getu(14);
+      vi = new DataView(ar.buffer);
+      if (ar[2] != this.mem[2] || ar[3] != this.mem[3]) // ZORKID does not match
+        return null;
+      pc = getUint32();
+      cs = new Array(getUint16());
+      ds = Array.from({length: getUint16()}, getInt16);
+      for(i=0; i < cs.length; i++) {
+        cs[i] = {};
+        cs[i].local = new Int16Array(getUint8());
+        cs[i].pc = getUint24();
+        cs[i].ds = Array.from({length: getUint16()}, getInt16);
+        for(j=0; j < cs[i].local.length; j++)
+          cs[i].local[j] = getInt16();
       }
-      this.mem.set(new Uint8Array(ar.buffer,0,purbot));
+      this.mem.set(new Uint8Array(ar.buffer, 0, purbot));
       return [ds,cs,pc];
     } catch(e) {
       return null;
     }
   },
+
   endText: 0,
   fwords: null,
+
   genPrint: function*(text) {
-    var x=this.get(16);
-    if(x!=this.savedFlags) {
-      this.savedFlags=x;
-      yield*this.highlight(!!(x&2));
+    var x = this.get(16);
+    if(x != this.savedFlags) {
+      this.savedFlags = x;
+      yield* this.highlight(!!(x & 2));
     }
-    yield*this.print(text,!!(x&1));
+    yield* this.print(text, !!(x&1));
   },
-  get: function(x) { return this.view.getInt16(x,this.byteSwapped); },
+
+  get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
+
   getText: function(addr) {
-    var d; // function to parse each Z-character
     var o=""; // output
     var ps=0; // permanent shift
     var ts=0; // temporary shift
     var w; // read each 16-bits data
     var y; // auxiliary data for parsing state
-    d=v => {
+    let d = v => { // function to parse each Z-character
       if(ts==3) {
         y=v<<5;
         ts=4;
@@ -229,13 +265,14 @@ JSZM.prototype={
   regBreak: null,
   restarted: ()=>[],
   restore: ()=>[],
+
   run: function*() {
     var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,x,y,z;
     var globals,objects,fwords,defprop;
     var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
 
     // Functions
-    addr=(x) => (x&65535)<<1;
+    function addr(x) { return (x & 0xFFFF) << 1; }
     fetch=(x) => {
       if(x==0) return ds.pop();
       if(x<16) return cs[0].local[x-1];
@@ -353,19 +390,25 @@ JSZM.prototype={
 
     // Initializations
     init();
-    yield*this.restarted();
-    yield*this.highlight(!!(this.savedFlags&2));
+    yield* this.restarted();
+    yield* this.highlight(!!(this.savedFlags&2));
 
     // Main loop
     main: for(;;) {
-      inst=pcgetb();
-      if(inst<128) {
+      inst = pcgetb();
+      if (inst <= 0x7F) {
         // 2OP
-        if(inst&64) op0=pcfetch(); else op0=pcgetb();
-        if(inst&32) op1=pcfetch(); else op1=pcgetb();
-        inst&=31;
-        opc=2;
-      } else if(inst<176) {
+        if (inst & 0x40)
+          op0 = pcfetch();
+        else
+          op0 = pcgetb();
+        if (inst & 0x20)
+          op1 = pcfetch();
+        else
+          op1 = pcgetb();
+        inst &= 0x1F;
+        opc = 2;
+      } else if (inst < 176) {
         // 1OP
         x=(inst>>4)&3;
         inst&=143;
@@ -381,6 +424,7 @@ JSZM.prototype={
         op3=opfetch(x>>0,4);
         if(inst<224) inst&=31;
       }
+
       switch(inst) {
         case 1: // EQUAL?
           predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
