@@ -408,21 +408,26 @@ JSZM.prototype = {
           op1 = pcgetb();
         inst &= 0x1F;
         opc = 2;
-      } else if (inst < 176) {
+      } else if (inst < 0xB0) {
         // 1OP
-        x=(inst>>4)&3;
-        inst&=143;
-        if(x==0) op0=pcget();
-        else if(x==1) op0=pcgetb();
-        else if(x==2) op0=pcfetch();
-      } else if(inst>=192) {
+        x = (inst >> 4) & 3;
+        inst &= 0x8F;
+        if (x == 0)
+          op0 = pcget();
+        else if (x == 1)
+          op0 = pcgetb();
+        else if (x == 2)
+          op0 = pcfetch();
+        opc = 1;
+      } else if(inst >= 0xC0) {
         // EXT
-        x=pcgetb();
-        op0=opfetch(x>>6,1);
-        op1=opfetch(x>>4,2);
-        op2=opfetch(x>>2,3);
-        op3=opfetch(x>>0,4);
-        if(inst<224) inst&=31;
+        x = pcgetb();
+        op0 = opfetch(x >> 6, 1);
+        op1 = opfetch(x >> 4, 2);
+        op2 = opfetch(x >> 2, 3);
+        op3 = opfetch(x >> 0, 4);
+        if (inst < 0xE0)
+          inst &= 0x1F;
       }
 
       switch(inst) {
