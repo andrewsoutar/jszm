@@ -267,7 +267,7 @@ JSZM.prototype = {
   restore: ()=>[],
 
   run: function*() {
-    var mem,pc,cs,ds,op0,op1,op2,op3,opc,inst,y,z;
+    var mem,pc,cs,ds,opc,inst,y,z;
     var globals,objects,fwords,defprop;
     var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
 
@@ -278,10 +278,11 @@ JSZM.prototype = {
       if(x<16) return cs[0].local[x-1];
       return this.get(globals+2*x);
     };
-    flagset=() => {
-      op3=1<<(15&~op1);
-      op2=objects+op0*9+(op1&16?2:0);
-      opc=this.get(op2);
+    flagset = (op0Nonshared, op1Nonshared) => { /* FIXME I know, these variable names suck */
+      const op3Nonshared = 1 << (15 & ~op1Nonshared);
+      const op2Nonshared = objects + op0Nonshared * 9 + (op1Nonshared & 16 ? 2 : 0);
+      opc = this.get(op2Nonshared);
+      return [op2Nonshared, op3Nonshared];
     };
     const initRng = () => {
       this.seed = (Math.random() * 0xFFFFFFFF) >>> 0;      
@@ -351,19 +352,17 @@ JSZM.prototype = {
       if(x&0x2000) x-=0x4000;
       pc+=x-2;
     };
-    propfind=() => {
-      var z=this.getu(objects+op0*9+7);
-      z+=mem[z]*2+1;
-      while(mem[z]) {
-        if((mem[z]&31)==op1) {
-          op3=z+1;
-          return true;
+    propfind = (op0Nonshared, op1Nonshared) => {
+      var z = this.getu(objects + op0Nonshared * 9 + 7);
+      z += mem[z] * 2 + 1;
+      while (mem[z]) {
+        if ((mem[z] & 31) == op1Nonshared) {
+          return [true, z + 1];
         } else {
-          z+=(mem[z]>>5)+2;
+          z += (mem[z] >> 5) + 2;
         }
       }
-      op3=0;
-      return false;
+      return [false, 0];
     };
     ret=(x) => {
       ds=cs[0].ds;
@@ -393,6 +392,7 @@ JSZM.prototype = {
     yield* this.restarted();
     yield* this.highlight(!!(this.savedFlags&2));
 
+    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined;
     // Main loop
     main: for(;;) {
       inst = pcgetb();
@@ -600,17 +600,17 @@ JSZM.prototype = {
             },
             10: // FSET?
             () => { /* vararg */
-              flagset();
+              [op2, op3] = flagset(op0, op1);
               predicate(opc & op3);
             },
             11: // FSET
             () => { /* vararg */
-              flagset();
+              [op2, op3] = flagset(op0, op1);
               this.put(op2, opc | op3);
             },
             12: // FCLEAR
             () => { /* vararg */
-              flagset();
+              [op2, op3] = flagset(op0, op1);
               this.put(op2, opc & ~op3);
             },
             13: // SET
@@ -631,22 +631,24 @@ JSZM.prototype = {
             },
             17: // GETP
             () => { /* vararg */
-              if (propfind()) {
-                store(mem[op3-1] & 32 ? this.get(op3) : mem[op3]);
+              let found;
+              [found, op3] = propfind(op0, op1);
+              if (found) {
+                store(mem[op3 - 1] & 32 ? this.get(op3) : mem[op3]);
               } else {
                 store(this.get(defprop + 2 * op1));
               }
             },
             18: // GETPT
             () => { /* vararg */
-              propfind();
+              [, op3] = propfind(op0, op1);
               store(op3);
             },
             19: // NEXTP
             () => { /* vararg */
               if (op1) {
                 // Return next property
-                propfind();
+                [, op3] = propfind(op0, op1);
                 store(mem[op3 + (mem[op3 - 1] >> 5) + 1] & 31);
               } else {
                 // Return first property
@@ -779,7 +781,7 @@ JSZM.prototype = {
             },
             227: // PUTP
             () => { /* vararg */
-              propfind();
+              [, op3] = propfind(op0, op1);
               if (mem[op3 - 1] & 32) {
                 this.put(op3, op2);
               } else {
