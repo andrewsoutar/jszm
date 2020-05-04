@@ -267,9 +267,9 @@ JSZM.prototype = {
   restore: ()=>[],
 
   run: function*() {
-    var mem,pc,cs,ds,opc,inst,y,z;
+    var mem,pc,cs,ds,inst,y,z;
     var globals,objects,fwords,defprop;
-    var addr,fetch,flagset,init,move,opfetch,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
+    var addr,fetch,flagset,init,move,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
 
     // Functions
     function addr(x) { return (x & 0xFFFF) << 1; }
@@ -281,8 +281,8 @@ JSZM.prototype = {
     flagset = (op0Nonshared, op1Nonshared) => { /* FIXME I know, these variable names suck */
       const op3Nonshared = 1 << (15 & ~op1Nonshared);
       const op2Nonshared = objects + op0Nonshared * 9 + (op1Nonshared & 16 ? 2 : 0);
-      opc = this.get(op2Nonshared);
-      return [op2Nonshared, op3Nonshared];
+      const opcNonshared = this.get(op2Nonshared);
+      return [opcNonshared, op2Nonshared, op3Nonshared];
     };
     const initRng = () => {
       this.seed = (Math.random() * 0xFFFFFFFF) >>> 0;      
@@ -327,11 +327,6 @@ JSZM.prototype = {
       } else {
         mem[objects+x*9+5]=0; // x.next=0
       }
-    };
-    opfetch=(x,y) => {
-      if((x&=3)==3) return;
-      opc=y;
-      return [pcget,pcgetb,pcfetch][x]();
     };
     pcfetch=(x) => fetch(mem[pc++]);
     pcget=() => {
@@ -392,7 +387,8 @@ JSZM.prototype = {
     yield* this.restarted();
     yield* this.highlight(!!(this.savedFlags&2));
 
-    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined;
+    let op0 = undefined, op1 = undefined, op2 = undefined, op3 = undefined,
+        opc = undefined;
     // Main loop
     main: for(;;) {
       inst = pcgetb();
@@ -420,12 +416,19 @@ JSZM.prototype = {
       } else if (inst >= 0xC0) {
         // EXT
         const paramTypes = pcgetb();
+        let opcNonshared = opc;
+        const opfetch = (opType, opNum) => {
+          opType &= 3;
+          if (opType != 3)
+            opcNonshared = opNum;
+          return [pcget, pcgetb, pcfetch, () => undefined][opType]();
+        }
         parameters = [
           opfetch(paramTypes >> 6, 1),
           opfetch(paramTypes >> 4, 2),
           opfetch(paramTypes >> 2, 3),
           opfetch(paramTypes >> 0, 4)
-        ].slice(0, opc);
+        ].slice(0, opcNonshared);
         if (inst < 0xE0)
           inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
         /* Otherwise, gives inst = 0b111xxxxx - [224..255] */
@@ -559,8 +562,8 @@ JSZM.prototype = {
           const definedInstructions = {
             /* These instructions do not and are safe to port */
             1: // EQUAL?
-            () => { /* vararg */
-              predicate(op0==op1 || (opc>2 && op0==op2) || (opc==4 && op0==op3));
+            (key, ...values) => { /* vararg */
+              predicate(key == values[0] || (opc > 2 && key == values[1]) || (opc == 4 && key == values[2]));
             },
             2: // LESS?
             (a, b) => { /* vararg */
@@ -583,8 +586,8 @@ JSZM.prototype = {
               predicate(tmp > b);
             },
             6: // IN?
-            () => { /* vararg */
-              predicate(mem[objects + op0 * 9 + 4] == op1);
+            (op0Nonshared, op1Nonshared) => { /* vararg */
+              predicate(mem[objects + op0Nonshared * 9 + 4] == op1Nonshared);
             },
             7: // BTST
             (a, bits) => { /* vararg */
@@ -600,17 +603,17 @@ JSZM.prototype = {
             },
             10: // FSET?
             () => { /* vararg */
-              [op2, op3] = flagset(op0, op1);
+              [opc, op2, op3] = flagset(op0, op1);
               predicate(opc & op3);
             },
             11: // FSET
             () => { /* vararg */
-              [op2, op3] = flagset(op0, op1);
+              [opc, op2, op3] = flagset(op0, op1);
               this.put(op2, opc | op3);
             },
             12: // FCLEAR
             () => { /* vararg */
-              [op2, op3] = flagset(op0, op1);
+              [opc, op2, op3] = flagset(op0, op1);
               this.put(op2, opc & ~op3);
             },
             13: // SET
