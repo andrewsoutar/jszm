@@ -403,6 +403,8 @@ JSZM.prototype = {
         inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
 
         [op0, op1] = parameters;
+        op2 = undefined;
+        op3 = undefined;
       } else if (inst < 0xB0) {
         // 1OP
         const paramType = (inst >> 4) & 3;
@@ -413,6 +415,9 @@ JSZM.prototype = {
           (paramType == 2) ? pcfetch() : op0
         ];
         [op0] = parameters;
+        op1 = undefined;
+        op2 = undefined;
+        op3 = undefined;
       } else if (inst >= 0xC0) {
         // EXT
         const paramTypes = pcgetb();
