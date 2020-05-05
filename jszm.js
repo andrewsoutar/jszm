@@ -757,29 +757,28 @@ JSZM.prototype = {
           if (varInst) {
             const [not2op, opcode] = splitBytes(rest2, 1, 5);
             return {
-              inst: not2op ? 0xE0 | opcode : opcode,
+              fun: definedInstructions[not2op ? 0xE0 | opcode : opcode],
               parameters: splitBytes(pcgetb(), 2, 2, 2, 2).map(getParameterByType)
             };
           } else {
             const [op0Type, opcode] = splitBytes(rest2, 2, 4);
             const op0 = getParameterByType(op0Type);
             return {
-              inst: (typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode,
+              fun: definedInstructions[(typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode],
               parameters: [op0]
             };
           }
         } else {
           const [op0Type, op1Type, opcode] = splitBytes(rest1, 1, 1, 5);
           return {
-            inst: opcode,
+            fun: definedInstructions[opcode],
             parameters: [op0Type, op1Type].map(type => getParameterByType(type + 1))
           };
         }
       }
 
-      const {inst, parameters} = decodeInstruction();
-      if (definedInstructions.hasOwnProperty(inst)) {
-        const fun = definedInstructions[inst];
+      const {fun, parameters} = decodeInstruction();
+      if (typeof fun !== "undefined") {
         const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
         try {
           if (fun instanceof GeneratorFunction) {
