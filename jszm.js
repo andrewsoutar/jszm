@@ -398,32 +398,6 @@ JSZM.prototype = {
       function getParameterByType(type) {
         return [pcget, pcgetb, pcfetch, () => undefined][type]();
       }
-      function decodeInstruction() {
-        const [notBinaryOp, rest1] = splitBytes(pcgetb(), 1, 7);
-        if (notBinaryOp) {
-          const [varInst, rest2] = splitBytes(rest1, 1, 6);
-          if (varInst) {
-            const [not2op, opcode] = splitBytes(rest2, 1, 5);
-            return {
-              inst: not2op ? 0xE0 | opcode : opcode,
-              parameters: splitBytes(pcgetb(), 2, 2, 2, 2).map(getParameterByType)
-            };
-          } else {
-            const [op0Type, opcode] = splitBytes(rest2, 2, 4);
-            const op0 = getParameterByType(op0Type);
-            return {
-              inst: (typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode,
-              parameters: [op0]
-            };
-          }
-        } else {
-          const [op0Type, op1Type, opcode] = splitBytes(rest1, 1, 1, 5);
-          return {
-            inst: opcode,
-            parameters: [op0Type, op1Type].map(type => getParameterByType(type + 1))
-          };
-        }
-      }
 
       class ZMachineQuit {};
 
@@ -434,7 +408,6 @@ JSZM.prototype = {
        * [224..255] :: variable parameters
        */
 
-      const {inst, parameters} = decodeInstruction();
       const definedInstructions = {
       /* These instructions do not and are safe to port */
         1: // EQUAL?
@@ -777,6 +750,34 @@ JSZM.prototype = {
         }.bind(this)
       };
 
+      function decodeInstruction() {
+        const [notBinaryOp, rest1] = splitBytes(pcgetb(), 1, 7);
+        if (notBinaryOp) {
+          const [varInst, rest2] = splitBytes(rest1, 1, 6);
+          if (varInst) {
+            const [not2op, opcode] = splitBytes(rest2, 1, 5);
+            return {
+              inst: not2op ? 0xE0 | opcode : opcode,
+              parameters: splitBytes(pcgetb(), 2, 2, 2, 2).map(getParameterByType)
+            };
+          } else {
+            const [op0Type, opcode] = splitBytes(rest2, 2, 4);
+            const op0 = getParameterByType(op0Type);
+            return {
+              inst: (typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode,
+              parameters: [op0]
+            };
+          }
+        } else {
+          const [op0Type, op1Type, opcode] = splitBytes(rest1, 1, 1, 5);
+          return {
+            inst: opcode,
+            parameters: [op0Type, op1Type].map(type => getParameterByType(type + 1))
+          };
+        }
+      }
+
+      const {inst, parameters} = decodeInstruction();
       if (definedInstructions.hasOwnProperty(inst)) {
         const fun = definedInstructions[inst];
         const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
