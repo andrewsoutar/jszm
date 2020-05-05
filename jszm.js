@@ -408,8 +408,147 @@ JSZM.prototype = {
        * [224..255] :: variable parameters
        */
 
-      const definedInstructions = {
-      /* These instructions do not and are safe to port */
+      const z0opInstructions = {
+        176: // RTRUE
+        () => { /* void */
+          ret(1);
+        },
+        177: // RFALSE
+        () => { /* void */
+          ret(0);
+        },
+        178: // PRINTI
+        function*() { /* void */
+          yield* this.genPrint(this.getText(pc));
+          pc=this.endText;
+        }.bind(this),
+        179: // PRINTR
+        function*() { /* void */
+          yield* this.genPrint(this.getText(pc) + "\n");
+          ret(1);
+        }.bind(this),
+        180: // NOOP
+        () => {}, /* void */
+        181: // SAVE
+        function*() { /* void */
+          this.savedFlags = this.get(16);
+          predicate(yield* this.save(this.serialize(ds,cs,pc)));
+        }.bind(this),
+        182: // RESTORE
+        function*() { /* void */
+          this.savedFlags = this.get(16);
+          if (z = yield* this.restore())
+            z = this.deserialize(z);
+          this.put(16, this.savedFlags);
+          if (z) {
+            ds = z[0];
+            cs = z[1];
+            pc = z[2];
+          }
+          predicate(z);
+        }.bind(this),
+        183: // RESTART
+        function*() { /* void */
+          init();
+          yield* this.restarted();
+        }.bind(this),
+        184: // RSTACK
+        () => { /* void */
+          ret(ds[ds.length-1]);
+        },
+        185: // FSTACK
+        () => { /* void */
+          ds.pop();
+        },
+        186: // QUIT
+        () => {
+          throw new ZMachineQuit();
+        },
+        187: // CRLF
+        function*() { /* void */
+          yield* this.genPrint("\n");
+        }.bind(this),
+        188: // USL (update status line)
+        function*() { /* void */
+          if (this.updateStatusLine)
+            yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+        }.bind(this),
+        189: // VERIFY
+        () => { /* void */
+          predicate(this.verify());
+        }
+      };
+
+      const z1opInstructions = {
+        128: // ZERO?
+        (a) => { /* unary */
+          predicate(!a);
+        },
+        129: // NEXT?
+        (op0Nonshared) => { /* unary */
+          const result = mem[objects + op0Nonshared * 9 + 5];
+          store(result);
+          predicate(result);
+        },
+        130: // FIRST?
+        (op0Nonshared) => { /* unary */
+          const result = mem[objects + op0Nonshared * 9 + 6];
+          store(result);
+          predicate(result);
+        },
+        131: // LOC
+        (op0Nonshared) => { /* unary */
+          store(mem[objects + op0Nonshared * 9 + 4]);
+        },
+        132: // PTSIZE
+        (op0Nonshared) => { /* unary */
+          store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
+        },
+        133: // INC
+        (loc) => { /* unary */
+          const tmp = xfetch(loc);
+          xstore(loc, tmp + 1);
+        },
+        134: // DEC
+        (loc) => { /* unary */
+          const tmp = xfetch(loc);
+          xstore(loc, tmp - 1);
+        },
+        135: // PRINTB
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(strAddr & 65535));
+        }.bind(this),
+        137: // REMOVE
+        (op0Nonshared) => { /* unary */
+          move(op0Nonshared, 0);
+        },
+        138: // PRINTD
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
+        }.bind(this),
+        139: // RETURN
+        (retval) => { /* unary */
+          ret(retval);
+        },
+        140: // JUMP
+        (offset) => { /* unary */
+          pc += offset - 2;
+        },
+        141: // PRINT
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(addr(strAddr)));
+        }.bind(this),
+        142: // VALUE
+        (loc) => { /* unary */
+          store(xfetch(loc));
+        },
+        143: // BCOM (binary complement)
+        (a) => { /* unary */
+          store(~a);
+        }
+      };
+
+      const z2opInstructions = {
         1: // EQUAL?
         (key, ...values) => { /* vararg */
           predicate(typeof key === "undefined" || values.includes(key));
@@ -527,141 +666,10 @@ JSZM.prototype = {
         24: // MOD
         (a, b) => { /* vararg */
           store(a % b);
-        },
-        128: // ZERO?
-        (a) => { /* unary */
-          predicate(!a);
-        },
-        129: // NEXT?
-        (op0Nonshared) => { /* unary */
-          const result = mem[objects + op0Nonshared * 9 + 5];
-          store(result);
-          predicate(result);
-        },
-        130: // FIRST?
-        (op0Nonshared) => { /* unary */
-          const result = mem[objects + op0Nonshared * 9 + 6];
-          store(result);
-          predicate(result);
-        },
-        131: // LOC
-        (op0Nonshared) => { /* unary */
-          store(mem[objects + op0Nonshared * 9 + 4]);
-        },
-        132: // PTSIZE
-        (op0Nonshared) => { /* unary */
-          store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
-        },
-        133: // INC
-        (loc) => { /* unary */
-          const tmp = xfetch(loc);
-          xstore(loc, tmp + 1);
-        },
-        134: // DEC
-        (loc) => { /* unary */
-          const tmp = xfetch(loc);
-          xstore(loc, tmp - 1);
-        },
-        135: // PRINTB
-        function*(strAddr) { /* unary */
-          yield* this.genPrint(this.getText(strAddr & 65535));
-        }.bind(this),
-        137: // REMOVE
-        (op0Nonshared) => { /* unary */
-          move(op0Nonshared, 0);
-        },
-        138: // PRINTD
-        function*(strAddr) { /* unary */
-          yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
-        }.bind(this),
-        139: // RETURN
-        (retval) => { /* unary */
-          ret(retval);
-        },
-        140: // JUMP
-        (offset) => { /* unary */
-          pc += offset - 2;
-        },
-        141: // PRINT
-        function*(strAddr) { /* unary */
-          yield* this.genPrint(this.getText(addr(strAddr)));
-        }.bind(this),
-        142: // VALUE
-        (loc) => { /* unary */
-          store(xfetch(loc));
-        },
-        143: // BCOM (binary complement)
-        (a) => { /* unary */
-          store(~a);
-        },
-        176: // RTRUE
-        () => { /* void */
-          ret(1);
-        },
-        177: // RFALSE
-        () => { /* void */
-          ret(0);
-        },
-        178: // PRINTI
-        function*() { /* void */
-          yield* this.genPrint(this.getText(pc));
-          pc=this.endText;
-        }.bind(this),
-        179: // PRINTR
-        function*() { /* void */
-          yield* this.genPrint(this.getText(pc) + "\n");
-          ret(1);
-        }.bind(this),
-        180: // NOOP
-        () => {}, /* void */
-        181: // SAVE
-        function*() { /* void */
-          this.savedFlags = this.get(16);
-          predicate(yield* this.save(this.serialize(ds,cs,pc)));
-        }.bind(this),
-        182: // RESTORE
-        function*() { /* void */
-          this.savedFlags = this.get(16);
-          if (z = yield* this.restore())
-            z = this.deserialize(z);
-          this.put(16, this.savedFlags);
-          if (z) {
-            ds = z[0];
-            cs = z[1];
-            pc = z[2];
-          }
-          predicate(z);
-        }.bind(this),
-        183: // RESTART
-        function*() { /* void */
-          init();
-          yield* this.restarted();
-        }.bind(this),
-        184: // RSTACK
-        () => { /* void */
-          ret(ds[ds.length-1]);
-        },
-        185: // FSTACK
-        () => { /* void */
-          ds.pop();
-        },
-        186: // QUIT
-        () => {
-          throw new ZMachineQuit();
-        },
-        187: // CRLF
-        function*() { /* void */
-          yield* this.genPrint("\n");
-        }.bind(this),
-        188: // USL (update status line)
-        function*() { /* void */
-          if (this.updateStatusLine)
-            yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-        }.bind(this),
-        189: // VERIFY
-        () => { /* void */
-          predicate(this.verify());
-        },
+        }
+      };
+
+      const zVarInstructions = {
         224: // CALL
         (method, ...params) => { /* vararg */
           if(method) {
@@ -757,21 +765,23 @@ JSZM.prototype = {
           if (varInst) {
             const [not2op, opcode] = splitBytes(rest2, 1, 5);
             return {
-              fun: definedInstructions[not2op ? 0xE0 | opcode : opcode],
+              fun: not2op ? zVarInstructions[0xE0 | opcode] : z2opInstructions[opcode],
               parameters: splitBytes(pcgetb(), 2, 2, 2, 2).map(getParameterByType)
             };
           } else {
             const [op0Type, opcode] = splitBytes(rest2, 2, 4);
             const op0 = getParameterByType(op0Type);
             return {
-              fun: definedInstructions[(typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode],
+              fun: typeof op0 === "undefined" ?
+                   z0opInstructions[0xB0 | opcode] :
+                   z1opInstructions[0x80 | opcode],
               parameters: [op0]
             };
           }
         } else {
           const [op0Type, op1Type, opcode] = splitBytes(rest1, 1, 1, 5);
           return {
-            fun: definedInstructions[opcode],
+            fun: z2opInstructions[opcode],
             parameters: [op0Type, op1Type].map(type => getParameterByType(type + 1))
           };
         }
