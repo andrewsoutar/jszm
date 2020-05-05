@@ -409,32 +409,32 @@ JSZM.prototype = {
        */
 
       const z0opInstructions = {
-        176: // RTRUE
+        0xB0: // RTRUE
         () => { /* void */
           ret(1);
         },
-        177: // RFALSE
+        0xB1: // RFALSE
         () => { /* void */
           ret(0);
         },
-        178: // PRINTI
+        0xB2: // PRINTI
         function*() { /* void */
           yield* this.genPrint(this.getText(pc));
           pc=this.endText;
         }.bind(this),
-        179: // PRINTR
+        0xB3: // PRINTR
         function*() { /* void */
           yield* this.genPrint(this.getText(pc) + "\n");
           ret(1);
         }.bind(this),
-        180: // NOOP
+        0xB4: // NOOP
         () => {}, /* void */
-        181: // SAVE
+        0xB5: // SAVE
         function*() { /* void */
           this.savedFlags = this.get(16);
           predicate(yield* this.save(this.serialize(ds,cs,pc)));
         }.bind(this),
-        182: // RESTORE
+        0xB6: // RESTORE
         function*() { /* void */
           this.savedFlags = this.get(16);
           if (z = yield* this.restore())
@@ -447,180 +447,181 @@ JSZM.prototype = {
           }
           predicate(z);
         }.bind(this),
-        183: // RESTART
+        0xB7: // RESTART
         function*() { /* void */
           init();
           yield* this.restarted();
         }.bind(this),
-        184: // RSTACK
+        0xB8: // RSTACK
         () => { /* void */
           ret(ds[ds.length-1]);
         },
-        185: // FSTACK
+        0xB9: // FSTACK
         () => { /* void */
           ds.pop();
         },
-        186: // QUIT
+        0xBA: // QUIT
         () => {
           throw new ZMachineQuit();
         },
-        187: // CRLF
+        0xBB: // CRLF
         function*() { /* void */
           yield* this.genPrint("\n");
         }.bind(this),
-        188: // USL (update status line)
+        0xBC: // USL (update status line)
         function*() { /* void */
           if (this.updateStatusLine)
             yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
         }.bind(this),
-        189: // VERIFY
+        0xBD: // VERIFY
         () => { /* void */
           predicate(this.verify());
         }
       };
 
       const z1opInstructions = {
-        128: // ZERO?
+        0x80: // ZERO?
         (a) => { /* unary */
           predicate(!a);
         },
-        129: // NEXT?
+        0x81: // NEXT?
         (op0Nonshared) => { /* unary */
           const result = mem[objects + op0Nonshared * 9 + 5];
           store(result);
           predicate(result);
         },
-        130: // FIRST?
+        0x82: // FIRST?
         (op0Nonshared) => { /* unary */
           const result = mem[objects + op0Nonshared * 9 + 6];
           store(result);
           predicate(result);
         },
-        131: // LOC
+        0x83: // LOC
         (op0Nonshared) => { /* unary */
           store(mem[objects + op0Nonshared * 9 + 4]);
         },
-        132: // PTSIZE
+        0x84: // PTSIZE
         (op0Nonshared) => { /* unary */
           store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
         },
-        133: // INC
+        0x85: // INC
         (loc) => { /* unary */
           const tmp = xfetch(loc);
           xstore(loc, tmp + 1);
         },
-        134: // DEC
+        0x86: // DEC
         (loc) => { /* unary */
           const tmp = xfetch(loc);
           xstore(loc, tmp - 1);
         },
-        135: // PRINTB
+        0x87: // PRINTB
         function*(strAddr) { /* unary */
           yield* this.genPrint(this.getText(strAddr & 65535));
         }.bind(this),
-        137: // REMOVE
+
+        0x89: // REMOVE
         (op0Nonshared) => { /* unary */
           move(op0Nonshared, 0);
         },
-        138: // PRINTD
+        0x8A: // PRINTD
         function*(strAddr) { /* unary */
           yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
         }.bind(this),
-        139: // RETURN
+        0x8B: // RETURN
         (retval) => { /* unary */
           ret(retval);
         },
-        140: // JUMP
+        0x8C: // JUMP
         (offset) => { /* unary */
           pc += offset - 2;
         },
-        141: // PRINT
+        0x8D: // PRINT
         function*(strAddr) { /* unary */
           yield* this.genPrint(this.getText(addr(strAddr)));
         }.bind(this),
-        142: // VALUE
+        0x8E: // VALUE
         (loc) => { /* unary */
           store(xfetch(loc));
         },
-        143: // BCOM (binary complement)
+        0x8F: // BCOM (binary complement)
         (a) => { /* unary */
           store(~a);
         }
       };
 
       const z2opInstructions = {
-        1: // EQUAL?
+        0x01: // EQUAL?
         (key, ...values) => { /* vararg */
           predicate(typeof key === "undefined" || values.includes(key));
         },
-        2: // LESS?
+        0x02: // LESS?
         (a, b) => { /* vararg */
           predicate(a < b);
         },
-        3: // GRTR?
+        0x03: // GRTR?
         (a, b) => { /* vararg */
           predicate(a > b);
         },
-        4: // DLESS?
+        0x04: // DLESS?
         (a, b) => { /* vararg */
           const tmp = xfetch(a) - 1;
           xstore(a, tmp);
           predicate(tmp < b);
         },
-        5: // IGRTR?
+        0x05: // IGRTR?
         (a, b) => { /* vararg */
           const tmp = xfetch(a) + 1;
           xstore(a, tmp);
           predicate(tmp > b);
         },
-        6: // IN?
+        0x06: // IN?
         (op0Nonshared, op1Nonshared) => { /* vararg */
           predicate(mem[objects + op0Nonshared * 9 + 4] == op1Nonshared);
         },
-        7: // BTST
+        0x07: // BTST
         (a, bits) => { /* vararg */
           predicate((a & bits) == bits);
         },
-        8: // BOR
+        0x08: // BOR
         (a, b) => { /* vararg */
           store(a | b);
         },
-        9: // BAND
+        0x09: // BAND
         (a, b) => { /* vararg */
           store(a & b);
         },
-        10: // FSET?
+        0x0A: // FSET?
         (op0Nonshared, op1Nonshared) => { /* vararg */
           const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
           predicate(opcNonshared & op3Nonshared);
         },
-        11: // FSET
+        0x0B: // FSET
         (op0Nonshared, op1Nonshared) => { /* vararg */
           const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
           this.put(op2Nonshared, opcNonshared | op3Nonshared);
         },
-        12: // FCLEAR
+        0x0C: // FCLEAR
         (op0Nonshared, op1Nonshared) => { /* vararg */
           const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
           this.put(op2Nonshared, opcNonshared & ~op3Nonshared);
         },
-        13: // SET
+        0x0D: // SET
         (loc, value) => { /* vararg */
           xstore(loc, value);
         },
-        14: // MOVE
+        0x0E: // MOVE
         (op0Nonshared, op1Nonshared) => { /* vararg */
           move(op0Nonshared, op1Nonshared);
         },
-        15: // GET
+        0x0F: // GET
         (op0Nonshared, op1Nonshared) => { /* vararg */
           store(this.get((op0Nonshared + op1Nonshared * 2) & 65535));
         },
-        16: // GETB
+        0x10: // GETB
         (op0Nonshared, op1Nonshared) => { /* vararg */
           store(mem[(op0Nonshared + op1Nonshared) & 65535]);
         },
-        17: // GETP
+        0x11: // GETP
         (op0Nonshared, op1Nonshared) => { /* vararg */
           let found, op3Nonshared;
           [found, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
@@ -630,12 +631,12 @@ JSZM.prototype = {
             store(this.get(defprop + 2 * op1Nonshared));
           }
         },
-        18: // GETPT
+        0x12: // GETPT
         (op0Nonshared, op1Nonshared) => { /* vararg */
           const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
           store(op3Nonshared);
         },
-        19: // NEXTP
+        0x13: // NEXTP
         (op0Nonshared, op1Nonshared) => { /* vararg */
           if (op1Nonshared) {
             // Return next property
@@ -647,30 +648,30 @@ JSZM.prototype = {
             store(mem[firstProp + mem[firstProp] * 2 + 1] & 31);
           }
         },
-        20: // ADD
+        0x14: // ADD
         (a, b) => { /* vararg */
           store(a + b);
         },
-        21: // SUB
+        0x15: // SUB
         (a, b) => { /* vararg */
           store(a - b);
         },
-        22: // MUL
+        0x16: // MUL
         (a, b) => { /* vararg */
           store(Math.imul(a, b));
         },
-        23: // DIV
+        0x17: // DIV
         (a, b) => { /* vararg */
           store(Math.trunc(a / b));
         },
-        24: // MOD
+        0x18: // MOD
         (a, b) => { /* vararg */
           store(a % b);
         }
       };
 
       const zVarInstructions = {
-        224: // CALL
+        0xE0: // CALL
         (method, ...params) => { /* vararg */
           if(method) {
             const tmp = mem[method = addr(method)];
@@ -689,15 +690,15 @@ JSZM.prototype = {
             store(0);
           }
         },
-        225: // PUT
+        0xE1: // PUT
         (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
           this.put((op0Nonshared + op1Nonshared * 2) & 65535, op2Nonshared);
         },
-        226: // PUTB
+        0xE2: // PUTB
         (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
           mem[(op0Nonshared + op1Nonshared) & 65535] = op2Nonshared;
         },
-        227: // PUTP
+        0xE3: // PUTP
         (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
           const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
           if (mem[op3Nonshared - 1] & 32) {
@@ -706,7 +707,7 @@ JSZM.prototype = {
             mem[op3Nonshared] = op2Nonshared;
           }
         },
-        228: // READ
+        0xE4: // READ
         function*(op0Nonshared, op1Nonshared) { /* vararg */
           yield*this.genPrint("");
           if (this.updateStatusLine)
@@ -715,16 +716,16 @@ JSZM.prototype = {
                            op0Nonshared & 65535,
                            op1Nonshared & 65535);
         }.bind(this),
-        229: // PRINTC
+        0xE5: // PRINTC
         function*(op0Nonshared) { /* vararg */
           yield* this.genPrint(op0Nonshared == 13 ? "\n" :
                                op0Nonshared ? String.fromCharCode(op0Nonshared) : "");
         }.bind(this),
-        230: // PRINTN
+        0xE6: // PRINTN
         function*(op0Nonshared) { /* vararg */
           yield* this.genPrint(String(op0Nonshared));
         }.bind(this),
-        231: // RANDOM
+        0xE7: // RANDOM
         (range) => { /* vararg */
           if (range <= 0) {             // If range is non-positive, reseed the PRNG.
             if (range === 0) {
@@ -738,20 +739,20 @@ JSZM.prototype = {
             store(Math.floor((this.seed / 0xFFFFFFFF) * range) + 1);  // Return integer in range [1..op0] (inclusive).
           }
         },
-        232: // PUSH
+        0xE8: // PUSH
         (a) => { /* vararg */
           ds.push(a);
         },
-        233: // POP
+        0xE9: // POP
         (loc) => { /* vararg */
           xstore(loc, ds.pop());
         },
-        234: // SPLIT
+        0xEA: // SPLIT
         function*(op0Nonshared) { /* vararg */
           if(this.split)
             yield* this.split(op0Nonshared);
         }.bind(this),
-        235: // SCREEN
+        0xEB: // SCREEN
         function*(op0Nonshared) { /* vararg */
           if(this.screen)
             yield* this.screen(op0Nonshared);
