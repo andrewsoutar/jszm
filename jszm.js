@@ -85,6 +85,12 @@ const JSZM_Version = {
   timestamp: 1480624305074
 };
 
+function splitBytes(bytes, ...counts) {
+  return counts.reverse()
+               .map(count => [bytes & ((1 << count) - 1), bytes >>>= count][0])
+               .reverse();
+}
+
 function JSZM(arr) {
   let mem = this.memInit = new Uint8Array(arr);
   if (mem[0] != 3)
@@ -389,46 +395,35 @@ JSZM.prototype = {
 
     // Main loop
     main: for(;;) {
-      let inst = pcgetb();
-
-      let parameters = [];
-      if (inst <= 0x7F) {
-        // 2OP
-        parameters = [
-          (inst & 0x40) ? pcfetch() : pcgetb(),
-          (inst & 0x20) ? pcfetch() : pcgetb()
-        ];
-        inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
-      } else if (inst < 0xB0) {
-        // 1OP
-        const paramType = (inst >> 4) & 3;
-        inst &= 0x8F; /* gives inst = 0b1000xxxx - [128..143] */
-        parameters = [
-          (paramType == 0) ? pcget() :
-          (paramType == 1) ? pcgetb() :
-          (paramType == 2) ? pcfetch()
-        ];
-      } else if (inst >= 0xC0) {
-        // EXT
-        const paramTypes = pcgetb();
-        let opcNonshared = 0;
-        const opfetch = (opType, opNum) => {
-          opType &= 3;
-          if (opType != 3)
-            opcNonshared = opNum;
-          return [pcget, pcgetb, pcfetch, () => undefined][opType]();
-        }
-        parameters = [
-          opfetch(paramTypes >> 6, 1),
-          opfetch(paramTypes >> 4, 2),
-          opfetch(paramTypes >> 2, 3),
-          opfetch(paramTypes >> 0, 4)
-        ].slice(0, opcNonshared);
-        if (inst < 0xE0)
-          inst &= 0x1F; /* gives inst = 0b000xxxxx - [0..31] */
-        /* Otherwise, gives inst = 0b111xxxxx - [224..255] */
+      function getParameterByType(type) {
+        return [pcget, pcgetb, pcfetch, () => undefined][type]();
       }
-      /* Otherwise, gives inst = 0b1011xxxx - [176..191] */
+      function decodeInstruction() {
+        const [notBinaryOp, rest1] = splitBytes(pcgetb(), 1, 7);
+        if (notBinaryOp) {
+          const [varInst, rest2] = splitBytes(rest1, 1, 6);
+          if (varInst) {
+            const [not2op, opcode] = splitBytes(rest2, 1, 5);
+            return {
+              inst: not2op ? 0xE0 | opcode : opcode,
+              parameters: splitBytes(pcgetb(), 2, 2, 2, 2).map(getParameterByType)
+            };
+          } else {
+            const [op0Type, opcode] = splitBytes(rest2, 2, 4);
+            const op0 = getParameterByType(op0Type);
+            return {
+              inst: (typeof op0 === "undefined" ? 0xB0 : 0x80) | opcode,
+              parameters: [op0]
+            };
+          }
+        } else {
+          const [op0Type, op1Type, opcode] = splitBytes(rest1, 1, 1, 5);
+          return {
+            inst: opcode,
+            parameters: [op0Type, op1Type].map(type => getParameterByType(type + 1))
+          };
+        }
+      }
 
       /* Operation parameter ranges, for below:
        * [000..031] :: 2 parameters, or variable parameters
@@ -437,6 +432,7 @@ JSZM.prototype = {
        * [224..255] :: variable parameters
        */
 
+      const {inst, parameters} = decodeInstruction();
       switch(inst) {
           /* These instructions can yield and will be ported later */
         case 135: // PRINTB
