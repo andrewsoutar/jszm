@@ -425,6 +425,8 @@ JSZM.prototype = {
         }
       }
 
+      class ZMachineQuit {};
+
       /* Operation parameter ranges, for below:
        * [000..031] :: 2 parameters, or variable parameters
        * [128..143] :: 0 or 1 parameter (assume 1?)
@@ -433,9 +435,6 @@ JSZM.prototype = {
        */
 
       const {inst, parameters} = decodeInstruction();
-      if (inst === 186) { // QUIT
-        return;
-      }
       const definedInstructions = {
       /* These instructions do not and are safe to port */
         1: // EQUAL?
@@ -673,6 +672,10 @@ JSZM.prototype = {
         () => { /* void */
           ds.pop();
         },
+        186: // QUIT
+        () => {
+          throw new ZMachineQuit();
+        },
         187: // CRLF
         function*() { /* void */
           yield* this.genPrint("\n");
@@ -777,10 +780,18 @@ JSZM.prototype = {
       if (definedInstructions.hasOwnProperty(inst)) {
         const fun = definedInstructions[inst];
         const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
-        if (fun instanceof GeneratorFunction) {
-          yield* fun(...parameters);
-        } else {
-          fun(...parameters);
+        try {
+          if (fun instanceof GeneratorFunction) {
+            yield* fun(...parameters);
+          } else {
+            fun(...parameters);
+          }
+        } catch (e) {
+          if (e instanceof ZMachineQuit) {
+            return;
+          } else {
+            throw e;
+          }
         }
       } else {
         throw new Error("JSZM: Invalid Z-machine opcode");
