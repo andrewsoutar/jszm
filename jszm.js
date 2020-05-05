@@ -433,362 +433,357 @@ JSZM.prototype = {
        */
 
       const {inst, parameters} = decodeInstruction();
-      switch(inst) {
-          /* These instructions can yield and will be ported later */
-        case 186: // QUIT
-          /* void */
-          return;
-
-        default:
-          const definedInstructions = {
-            /* These instructions do not and are safe to port */
-            1: // EQUAL?
-            (key, ...values) => { /* vararg */
-              predicate(typeof key === "undefined" || values.includes(key));
-            },
-            2: // LESS?
-            (a, b) => { /* vararg */
-              predicate(a < b);
-            },
-            3: // GRTR?
-            (a, b) => { /* vararg */
-              predicate(a > b);
-            },
-            4: // DLESS?
-            (a, b) => { /* vararg */
-              const tmp = xfetch(a) - 1;
-              xstore(a, tmp);
-              predicate(tmp < b);
-            },
-            5: // IGRTR?
-            (a, b) => { /* vararg */
-              const tmp = xfetch(a) + 1;
-              xstore(a, tmp);
-              predicate(tmp > b);
-            },
-            6: // IN?
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              predicate(mem[objects + op0Nonshared * 9 + 4] == op1Nonshared);
-            },
-            7: // BTST
-            (a, bits) => { /* vararg */
-              predicate((a & bits) == bits);
-            },
-            8: // BOR
-            (a, b) => { /* vararg */
-              store(a | b);
-            },
-            9: // BAND
-            (a, b) => { /* vararg */
-              store(a & b);
-            },
-            10: // FSET?
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              predicate(opcNonshared & op3Nonshared);
-            },
-            11: // FSET
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              this.put(op2Nonshared, opcNonshared | op3Nonshared);
-            },
-            12: // FCLEAR
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
-              this.put(op2Nonshared, opcNonshared & ~op3Nonshared);
-            },
-            13: // SET
-            (loc, value) => { /* vararg */
-              xstore(loc, value);
-            },
-            14: // MOVE
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              move(op0Nonshared, op1Nonshared);
-            },
-            15: // GET
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              store(this.get((op0Nonshared + op1Nonshared * 2) & 65535));
-            },
-            16: // GETB
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              store(mem[(op0Nonshared + op1Nonshared) & 65535]);
-            },
-            17: // GETP
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              let found, op3Nonshared;
-              [found, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              if (found) {
-                store(mem[op3Nonshared - 1] & 32 ? this.get(op3Nonshared) : mem[op3Nonshared]);
-              } else {
-                store(this.get(defprop + 2 * op1Nonshared));
-              }
-            },
-            18: // GETPT
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              store(op3Nonshared);
-            },
-            19: // NEXTP
-            (op0Nonshared, op1Nonshared) => { /* vararg */
-              if (op1Nonshared) {
-                // Return next property
-                const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-                store(mem[op3Nonshared + (mem[op3Nonshared - 1] >> 5) + 1] & 31);
-              } else {
-                // Return first property
-                const firstProp = this.getu(objects + op0Nonshared * 9 + 7); /* FIXME I'm trusting the comment here to name the variable - I have no clue what this actually does */
-                store(mem[firstProp + mem[firstProp] * 2 + 1] & 31);
-              }
-            },
-            20: // ADD
-            (a, b) => { /* vararg */
-              store(a + b);
-            },
-            21: // SUB
-            (a, b) => { /* vararg */
-              store(a - b);
-            },
-            22: // MUL
-            (a, b) => { /* vararg */
-              store(Math.imul(a, b));
-            },
-            23: // DIV
-            (a, b) => { /* vararg */
-              store(Math.trunc(a / b));
-            },
-            24: // MOD
-            (a, b) => { /* vararg */
-              store(a % b);
-            },
-            128: // ZERO?
-            (a) => { /* unary */
-              predicate(!a);
-            },
-            129: // NEXT?
-            (op0Nonshared) => { /* unary */
-              const result = mem[objects + op0Nonshared * 9 + 5];
-              store(result);
-              predicate(result);
-            },
-            130: // FIRST?
-            (op0Nonshared) => { /* unary */
-              const result = mem[objects + op0Nonshared * 9 + 6];
-              store(result);
-              predicate(result);
-            },
-            131: // LOC
-            (op0Nonshared) => { /* unary */
-              store(mem[objects + op0Nonshared * 9 + 4]);
-            },
-            132: // PTSIZE
-            (op0Nonshared) => { /* unary */
-              store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
-            },
-            133: // INC
-            (loc) => { /* unary */
-              const tmp = xfetch(loc);
-              xstore(loc, tmp + 1);
-            },
-            134: // DEC
-            (loc) => { /* unary */
-              const tmp = xfetch(loc);
-              xstore(loc, tmp - 1);
-            },
-            135: // PRINTB
-            function*(strAddr) { /* unary */
-              yield* this.genPrint(this.getText(strAddr & 65535));
-            }.bind(this),
-            137: // REMOVE
-            (op0Nonshared) => { /* unary */
-              move(op0Nonshared, 0);
-            },
-            138: // PRINTD
-            function*(strAddr) { /* unary */
-              yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
-            }.bind(this),
-            139: // RETURN
-            (retval) => { /* unary */
-              ret(retval);
-            },
-            140: // JUMP
-            (offset) => { /* unary */
-              pc += offset - 2;
-            },
-            141: // PRINT
-            function*(strAddr) { /* unary */
-              yield* this.genPrint(this.getText(addr(strAddr)));
-            }.bind(this),
-            142: // VALUE
-            (loc) => { /* unary */
-              store(xfetch(loc));
-            },
-            143: // BCOM (binary complement)
-            (a) => { /* unary */
-              store(~a);
-            },
-            176: // RTRUE
-            () => { /* void */
-              ret(1);
-            },
-            177: // RFALSE
-            () => { /* void */
-              ret(0);
-            },
-            178: // PRINTI
-            function*() { /* void */
-              yield* this.genPrint(this.getText(pc));
-              pc=this.endText;
-            }.bind(this),
-            179: // PRINTR
-            function*() { /* void */
-              yield* this.genPrint(this.getText(pc) + "\n");
-              ret(1);
-            }.bind(this),
-            180: // NOOP
-            () => {}, /* void */
-            181: // SAVE
-            function*() { /* void */
-              this.savedFlags = this.get(16);
-              predicate(yield* this.save(this.serialize(ds,cs,pc)));
-            }.bind(this),
-            182: // RESTORE
-            function*() { /* void */
-              this.savedFlags = this.get(16);
-              if (z = yield* this.restore())
-                z = this.deserialize(z);
-              this.put(16, this.savedFlags);
-              if (z) {
-                ds = z[0];
-                cs = z[1];
-                pc = z[2];
-              }
-              predicate(z);
-            }.bind(this),
-            183: // RESTART
-            function*() { /* void */
-              init();
-              yield* this.restarted();
-            }.bind(this),
-            184: // RSTACK
-            () => { /* void */
-              ret(ds[ds.length-1]);
-            },
-            185: // FSTACK
-            () => { /* void */
-              ds.pop();
-            },
-            187: // CRLF
-            function*() { /* void */
-              yield* this.genPrint("\n");
-            }.bind(this),
-            188: // USL (update status line)
-            function*() { /* void */
-              if (this.updateStatusLine)
-                yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-            }.bind(this),
-            189: // VERIFY
-            () => { /* void */
-              predicate(this.verify());
-            },
-            224: // CALL
-            (method, ...params) => { /* vararg */
-              if(method) {
-                const tmp = mem[method = addr(method)];
-                cs.unshift({ds: ds, pc: pc, local: new Int16Array(tmp)});
-                ds = [];
-                pc = method + 1;
-                for (let i = 0; i < mem[method]; i++)
-                  cs[0].local[i] = pcget();
-                if (params.length > 0 && typeof params[0] !== "undefined" && mem[method] > 0)
-                  cs[0].local[0] = params[0];
-                if (params.length > 1 && typeof params[1] !== "undefined" && mem[method] > 1)
-                  cs[0].local[1] = params[1];
-                if (params.length > 2 && typeof params[2] !== "undefined" && mem[method] > 2)
-                  cs[0].local[2] = params[2];
-              } else {
-                store(0);
-              }
-            },
-            225: // PUT
-            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
-              this.put((op0Nonshared + op1Nonshared * 2) & 65535, op2Nonshared);
-            },
-            226: // PUTB
-            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
-              mem[(op0Nonshared + op1Nonshared) & 65535] = op2Nonshared;
-            },
-            227: // PUTP
-            (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
-              const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
-              if (mem[op3Nonshared - 1] & 32) {
-                this.put(op3Nonshared, op2Nonshared);
-              } else {
-                mem[op3Nonshared] = op2Nonshared;
-              }
-            },
-            228: // READ
-            function*(op0Nonshared, op1Nonshared) { /* vararg */
-              yield*this.genPrint("");
-              if (this.updateStatusLine)
-                yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-              this.handleInput(yield* this.read(mem[op0Nonshared & 65535]),
-                               op0Nonshared & 65535,
-                               op1Nonshared & 65535);
-            }.bind(this),
-            229: // PRINTC
-            function*(op0Nonshared) { /* vararg */
-              yield* this.genPrint(op0Nonshared == 13 ? "\n" :
-                                   op0Nonshared ? String.fromCharCode(op0Nonshared) : "");
-            }.bind(this),
-            230: // PRINTN
-            function*(op0Nonshared) { /* vararg */
-              yield* this.genPrint(String(op0Nonshared));
-            }.bind(this),
-            231: // RANDOM
-            (range) => { /* vararg */
-              if (range <= 0) {             // If range is non-positive, reseed the PRNG.
-                if (range === 0) {
-                  initRng();                // If 0, seed using Math.random().
-                } else {
-                  this.seed = (range >>> 0); // If negative, seed with the specified value.
-                }
-                store(0);                   // Reseeding always returns 0.
-              } else {
-                this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
-                store(Math.floor((this.seed / 0xFFFFFFFF) * range) + 1);  // Return integer in range [1..op0] (inclusive).
-              }
-            },
-            232: // PUSH
-            (a) => { /* vararg */
-              ds.push(a);
-            },
-            233: // POP
-            (loc) => { /* vararg */
-              xstore(loc, ds.pop());
-            },
-            234: // SPLIT
-            function*(op0Nonshared) { /* vararg */
-              if(this.split)
-                yield* this.split(op0Nonshared);
-            }.bind(this),
-            235: // SCREEN
-            function*(op0Nonshared) { /* vararg */
-              if(this.screen)
-                yield* this.screen(op0Nonshared);
-            }.bind(this)
-          };
-
-          if (definedInstructions.hasOwnProperty(inst)) {
-            const fun = definedInstructions[inst];
-            const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
-            if (fun instanceof GeneratorFunction) {
-              yield* fun(...parameters);
-            } else {
-              fun(...parameters);
-            }
+      if (inst === 186) { // QUIT
+        return;
+      }
+      const definedInstructions = {
+      /* These instructions do not and are safe to port */
+        1: // EQUAL?
+        (key, ...values) => { /* vararg */
+          predicate(typeof key === "undefined" || values.includes(key));
+        },
+        2: // LESS?
+        (a, b) => { /* vararg */
+          predicate(a < b);
+        },
+        3: // GRTR?
+        (a, b) => { /* vararg */
+          predicate(a > b);
+        },
+        4: // DLESS?
+        (a, b) => { /* vararg */
+          const tmp = xfetch(a) - 1;
+          xstore(a, tmp);
+          predicate(tmp < b);
+        },
+        5: // IGRTR?
+        (a, b) => { /* vararg */
+          const tmp = xfetch(a) + 1;
+          xstore(a, tmp);
+          predicate(tmp > b);
+        },
+        6: // IN?
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          predicate(mem[objects + op0Nonshared * 9 + 4] == op1Nonshared);
+        },
+        7: // BTST
+        (a, bits) => { /* vararg */
+          predicate((a & bits) == bits);
+        },
+        8: // BOR
+        (a, b) => { /* vararg */
+          store(a | b);
+        },
+        9: // BAND
+        (a, b) => { /* vararg */
+          store(a & b);
+        },
+        10: // FSET?
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+          predicate(opcNonshared & op3Nonshared);
+        },
+        11: // FSET
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+          this.put(op2Nonshared, opcNonshared | op3Nonshared);
+        },
+        12: // FCLEAR
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          const [opcNonshared, op2Nonshared, op3Nonshared] = flagset(op0Nonshared, op1Nonshared);
+          this.put(op2Nonshared, opcNonshared & ~op3Nonshared);
+        },
+        13: // SET
+        (loc, value) => { /* vararg */
+          xstore(loc, value);
+        },
+        14: // MOVE
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          move(op0Nonshared, op1Nonshared);
+        },
+        15: // GET
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          store(this.get((op0Nonshared + op1Nonshared * 2) & 65535));
+        },
+        16: // GETB
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          store(mem[(op0Nonshared + op1Nonshared) & 65535]);
+        },
+        17: // GETP
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          let found, op3Nonshared;
+          [found, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+          if (found) {
+            store(mem[op3Nonshared - 1] & 32 ? this.get(op3Nonshared) : mem[op3Nonshared]);
           } else {
-            throw new Error("JSZM: Invalid Z-machine opcode");
+            store(this.get(defprop + 2 * op1Nonshared));
           }
+        },
+        18: // GETPT
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+          store(op3Nonshared);
+        },
+        19: // NEXTP
+        (op0Nonshared, op1Nonshared) => { /* vararg */
+          if (op1Nonshared) {
+            // Return next property
+            const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+            store(mem[op3Nonshared + (mem[op3Nonshared - 1] >> 5) + 1] & 31);
+          } else {
+            // Return first property
+            const firstProp = this.getu(objects + op0Nonshared * 9 + 7); /* FIXME I'm trusting the comment here to name the variable - I have no clue what this actually does */
+            store(mem[firstProp + mem[firstProp] * 2 + 1] & 31);
+          }
+        },
+        20: // ADD
+        (a, b) => { /* vararg */
+          store(a + b);
+        },
+        21: // SUB
+        (a, b) => { /* vararg */
+          store(a - b);
+        },
+        22: // MUL
+        (a, b) => { /* vararg */
+          store(Math.imul(a, b));
+        },
+        23: // DIV
+        (a, b) => { /* vararg */
+          store(Math.trunc(a / b));
+        },
+        24: // MOD
+        (a, b) => { /* vararg */
+          store(a % b);
+        },
+        128: // ZERO?
+        (a) => { /* unary */
+          predicate(!a);
+        },
+        129: // NEXT?
+        (op0Nonshared) => { /* unary */
+          const result = mem[objects + op0Nonshared * 9 + 5];
+          store(result);
+          predicate(result);
+        },
+        130: // FIRST?
+        (op0Nonshared) => { /* unary */
+          const result = mem[objects + op0Nonshared * 9 + 6];
+          store(result);
+          predicate(result);
+        },
+        131: // LOC
+        (op0Nonshared) => { /* unary */
+          store(mem[objects + op0Nonshared * 9 + 4]);
+        },
+        132: // PTSIZE
+        (op0Nonshared) => { /* unary */
+          store((mem[(op0Nonshared - 1) & 65535] >> 5) + 1);
+        },
+        133: // INC
+        (loc) => { /* unary */
+          const tmp = xfetch(loc);
+          xstore(loc, tmp + 1);
+        },
+        134: // DEC
+        (loc) => { /* unary */
+          const tmp = xfetch(loc);
+          xstore(loc, tmp - 1);
+        },
+        135: // PRINTB
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(strAddr & 65535));
+        }.bind(this),
+        137: // REMOVE
+        (op0Nonshared) => { /* unary */
+          move(op0Nonshared, 0);
+        },
+        138: // PRINTD
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
+        }.bind(this),
+        139: // RETURN
+        (retval) => { /* unary */
+          ret(retval);
+        },
+        140: // JUMP
+        (offset) => { /* unary */
+          pc += offset - 2;
+        },
+        141: // PRINT
+        function*(strAddr) { /* unary */
+          yield* this.genPrint(this.getText(addr(strAddr)));
+        }.bind(this),
+        142: // VALUE
+        (loc) => { /* unary */
+          store(xfetch(loc));
+        },
+        143: // BCOM (binary complement)
+        (a) => { /* unary */
+          store(~a);
+        },
+        176: // RTRUE
+        () => { /* void */
+          ret(1);
+        },
+        177: // RFALSE
+        () => { /* void */
+          ret(0);
+        },
+        178: // PRINTI
+        function*() { /* void */
+          yield* this.genPrint(this.getText(pc));
+          pc=this.endText;
+        }.bind(this),
+        179: // PRINTR
+        function*() { /* void */
+          yield* this.genPrint(this.getText(pc) + "\n");
+          ret(1);
+        }.bind(this),
+        180: // NOOP
+        () => {}, /* void */
+        181: // SAVE
+        function*() { /* void */
+          this.savedFlags = this.get(16);
+          predicate(yield* this.save(this.serialize(ds,cs,pc)));
+        }.bind(this),
+        182: // RESTORE
+        function*() { /* void */
+          this.savedFlags = this.get(16);
+          if (z = yield* this.restore())
+            z = this.deserialize(z);
+          this.put(16, this.savedFlags);
+          if (z) {
+            ds = z[0];
+            cs = z[1];
+            pc = z[2];
+          }
+          predicate(z);
+        }.bind(this),
+        183: // RESTART
+        function*() { /* void */
+          init();
+          yield* this.restarted();
+        }.bind(this),
+        184: // RSTACK
+        () => { /* void */
+          ret(ds[ds.length-1]);
+        },
+        185: // FSTACK
+        () => { /* void */
+          ds.pop();
+        },
+        187: // CRLF
+        function*() { /* void */
+          yield* this.genPrint("\n");
+        }.bind(this),
+        188: // USL (update status line)
+        function*() { /* void */
+          if (this.updateStatusLine)
+            yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+        }.bind(this),
+        189: // VERIFY
+        () => { /* void */
+          predicate(this.verify());
+        },
+        224: // CALL
+        (method, ...params) => { /* vararg */
+          if(method) {
+            const tmp = mem[method = addr(method)];
+            cs.unshift({ds: ds, pc: pc, local: new Int16Array(tmp)});
+            ds = [];
+            pc = method + 1;
+            for (let i = 0; i < mem[method]; i++)
+              cs[0].local[i] = pcget();
+            if (params.length > 0 && typeof params[0] !== "undefined" && mem[method] > 0)
+              cs[0].local[0] = params[0];
+            if (params.length > 1 && typeof params[1] !== "undefined" && mem[method] > 1)
+              cs[0].local[1] = params[1];
+            if (params.length > 2 && typeof params[2] !== "undefined" && mem[method] > 2)
+              cs[0].local[2] = params[2];
+          } else {
+            store(0);
+          }
+        },
+        225: // PUT
+        (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+          this.put((op0Nonshared + op1Nonshared * 2) & 65535, op2Nonshared);
+        },
+        226: // PUTB
+        (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+          mem[(op0Nonshared + op1Nonshared) & 65535] = op2Nonshared;
+        },
+        227: // PUTP
+        (op0Nonshared, op1Nonshared, op2Nonshared) => { /* vararg */
+          const [, op3Nonshared] = propfind(op0Nonshared, op1Nonshared);
+          if (mem[op3Nonshared - 1] & 32) {
+            this.put(op3Nonshared, op2Nonshared);
+          } else {
+            mem[op3Nonshared] = op2Nonshared;
+          }
+        },
+        228: // READ
+        function*(op0Nonshared, op1Nonshared) { /* vararg */
+          yield*this.genPrint("");
+          if (this.updateStatusLine)
+            yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+          this.handleInput(yield* this.read(mem[op0Nonshared & 65535]),
+                           op0Nonshared & 65535,
+                           op1Nonshared & 65535);
+        }.bind(this),
+        229: // PRINTC
+        function*(op0Nonshared) { /* vararg */
+          yield* this.genPrint(op0Nonshared == 13 ? "\n" :
+                               op0Nonshared ? String.fromCharCode(op0Nonshared) : "");
+        }.bind(this),
+        230: // PRINTN
+        function*(op0Nonshared) { /* vararg */
+          yield* this.genPrint(String(op0Nonshared));
+        }.bind(this),
+        231: // RANDOM
+        (range) => { /* vararg */
+          if (range <= 0) {             // If range is non-positive, reseed the PRNG.
+            if (range === 0) {
+              initRng();                // If 0, seed using Math.random().
+            } else {
+              this.seed = (range >>> 0); // If negative, seed with the specified value.
+            }
+            store(0);                   // Reseeding always returns 0.
+          } else {
+            this.seed = (1664525 * this.seed + 1013904223) >>> 0;     // Linear congruential generator
+            store(Math.floor((this.seed / 0xFFFFFFFF) * range) + 1);  // Return integer in range [1..op0] (inclusive).
+          }
+        },
+        232: // PUSH
+        (a) => { /* vararg */
+          ds.push(a);
+        },
+        233: // POP
+        (loc) => { /* vararg */
+          xstore(loc, ds.pop());
+        },
+        234: // SPLIT
+        function*(op0Nonshared) { /* vararg */
+          if(this.split)
+            yield* this.split(op0Nonshared);
+        }.bind(this),
+        235: // SCREEN
+        function*(op0Nonshared) { /* vararg */
+          if(this.screen)
+            yield* this.screen(op0Nonshared);
+        }.bind(this)
+      };
+
+      if (definedInstructions.hasOwnProperty(inst)) {
+        const fun = definedInstructions[inst];
+        const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
+        if (fun instanceof GeneratorFunction) {
+          yield* fun(...parameters);
+        } else {
+          fun(...parameters);
+        }
+      } else {
+        throw new Error("JSZM: Invalid Z-machine opcode");
       }
     }
 
