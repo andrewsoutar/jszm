@@ -435,118 +435,6 @@ JSZM.prototype = {
       const {inst, parameters} = decodeInstruction();
       switch(inst) {
           /* These instructions can yield and will be ported later */
-        case 135: // PRINTB
-          /* unary */
-          {
-            yield* this.genPrint(this.getText(parameters[0] & 65535));
-          }
-          break;
-        case 138: // PRINTD
-          /* unary */
-          {
-            yield* this.genPrint(this.getText(this.getu(objects + parameters[0] * 9 + 7) + 1));
-          }
-          break;
-        case 141: // PRINT
-          /* unary */
-          {
-            yield* this.genPrint(this.getText(addr(parameters[0])));
-          }
-          break;
-        case 178: // PRINTI
-          /* void */
-          {
-            yield* this.genPrint(this.getText(pc));
-            pc=this.endText;
-          }
-          break;
-        case 179: // PRINTR
-          /* void */
-          {
-            yield* this.genPrint(this.getText(pc) + "\n");
-            ret(1);
-          }
-          break;
-        case 181: // SAVE
-          /* void */
-          {
-            this.savedFlags = this.get(16);
-            predicate(yield* this.save(this.serialize(ds,cs,pc)));
-          }
-          break;
-        case 182: // RESTORE
-          /* void */
-          {
-            this.savedFlags = this.get(16);
-            if (z = yield* this.restore())
-              z = this.deserialize(z);
-            this.put(16, this.savedFlags);
-            if (z) {
-              ds = z[0];
-              cs = z[1];
-              pc = z[2];
-            }
-            predicate(z);
-          }
-          break;
-        case 183: // RESTART
-          /* void */
-          {
-            init();
-            yield* this.restarted();
-          }
-          break;
-        case 187: // CRLF
-          /* void */
-          {
-            yield* this.genPrint("\n");
-          }
-          break;
-        case 188: // USL (update status line)
-          /* void */
-          {
-            if (this.updateStatusLine)
-              yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-          }
-          break;
-        case 228: // READ
-          /* vararg */
-          {
-            yield*this.genPrint("");
-            if (this.updateStatusLine)
-              yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
-            this.handleInput(yield* this.read(mem[parameters[0] & 65535]),
-                             parameters[0] & 65535,
-                             parameters[1] & 65535);
-          }
-          break;
-        case 229: // PRINTC
-          /* vararg */
-          {
-            yield* this.genPrint(parameters[0] == 13 ? "\n" :
-                                 parameters[0] ? String.fromCharCode(parameters[0]) : "");
-          }
-          break;
-        case 230: // PRINTN
-          /* vararg */
-          {
-            yield* this.genPrint(String(parameters[0]));
-          }
-          break;
-        case 234: // SPLIT
-          /* vararg */
-          {
-            if(this.split)
-              yield* this.split(parameters[0]);
-          }
-          break;
-        case 235: // SCREEN
-          /* vararg */
-          {
-            if(this.screen)
-              yield* this.screen(parameters[0]);
-          }
-          break;
         case 186: // QUIT
           /* void */
           return;
@@ -706,10 +594,18 @@ JSZM.prototype = {
               const tmp = xfetch(loc);
               xstore(loc, tmp - 1);
             },
+            135: // PRINTB
+            function*(strAddr) { /* unary */
+              yield* this.genPrint(this.getText(strAddr & 65535));
+            }.bind(this),
             137: // REMOVE
             (op0Nonshared) => { /* unary */
               move(op0Nonshared, 0);
             },
+            138: // PRINTD
+            function*(strAddr) { /* unary */
+              yield* this.genPrint(this.getText(this.getu(objects + strAddr * 9 + 7) + 1));
+            }.bind(this),
             139: // RETURN
             (retval) => { /* unary */
               ret(retval);
@@ -718,6 +614,10 @@ JSZM.prototype = {
             (offset) => { /* unary */
               pc += offset - 2;
             },
+            141: // PRINT
+            function*(strAddr) { /* unary */
+              yield* this.genPrint(this.getText(addr(strAddr)));
+            }.bind(this),
             142: // VALUE
             (loc) => { /* unary */
               store(xfetch(loc));
@@ -734,8 +634,41 @@ JSZM.prototype = {
             () => { /* void */
               ret(0);
             },
+            178: // PRINTI
+            function*() { /* void */
+              yield* this.genPrint(this.getText(pc));
+              pc=this.endText;
+            }.bind(this),
+            179: // PRINTR
+            function*() { /* void */
+              yield* this.genPrint(this.getText(pc) + "\n");
+              ret(1);
+            }.bind(this),
             180: // NOOP
             () => {}, /* void */
+            181: // SAVE
+            function*() { /* void */
+              this.savedFlags = this.get(16);
+              predicate(yield* this.save(this.serialize(ds,cs,pc)));
+            }.bind(this),
+            182: // RESTORE
+            function*() { /* void */
+              this.savedFlags = this.get(16);
+              if (z = yield* this.restore())
+                z = this.deserialize(z);
+              this.put(16, this.savedFlags);
+              if (z) {
+                ds = z[0];
+                cs = z[1];
+                pc = z[2];
+              }
+              predicate(z);
+            }.bind(this),
+            183: // RESTART
+            function*() { /* void */
+              init();
+              yield* this.restarted();
+            }.bind(this),
             184: // RSTACK
             () => { /* void */
               ret(ds[ds.length-1]);
@@ -744,6 +677,15 @@ JSZM.prototype = {
             () => { /* void */
               ds.pop();
             },
+            187: // CRLF
+            function*() { /* void */
+              yield* this.genPrint("\n");
+            }.bind(this),
+            188: // USL (update status line)
+            function*() { /* void */
+              if (this.updateStatusLine)
+                yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+            }.bind(this),
             189: // VERIFY
             () => { /* void */
               predicate(this.verify());
@@ -784,6 +726,24 @@ JSZM.prototype = {
                 mem[op3Nonshared] = op2Nonshared;
               }
             },
+            228: // READ
+            function*(op0Nonshared, op1Nonshared) { /* vararg */
+              yield*this.genPrint("");
+              if (this.updateStatusLine)
+                yield* this.updateStatusLine(this.getText(this.getu(objects+xfetch(16)*9+7)+1),xfetch(18),xfetch(17));
+              this.handleInput(yield* this.read(mem[op0Nonshared & 65535]),
+                               op0Nonshared & 65535,
+                               op1Nonshared & 65535);
+            }.bind(this),
+            229: // PRINTC
+            function*(op0Nonshared) { /* vararg */
+              yield* this.genPrint(op0Nonshared == 13 ? "\n" :
+                                   op0Nonshared ? String.fromCharCode(op0Nonshared) : "");
+            }.bind(this),
+            230: // PRINTN
+            function*(op0Nonshared) { /* vararg */
+              yield* this.genPrint(String(op0Nonshared));
+            }.bind(this),
             231: // RANDOM
             (range) => { /* vararg */
               if (range <= 0) {             // If range is non-positive, reseed the PRNG.
@@ -805,7 +765,17 @@ JSZM.prototype = {
             233: // POP
             (loc) => { /* vararg */
               xstore(loc, ds.pop());
-            }
+            },
+            234: // SPLIT
+            function*(op0Nonshared) { /* vararg */
+              if(this.split)
+                yield* this.split(op0Nonshared);
+            }.bind(this),
+            235: // SCREEN
+            function*(op0Nonshared) { /* vararg */
+              if(this.screen)
+                yield* this.screen(op0Nonshared);
+            }.bind(this)
           };
 
           if (definedInstructions.hasOwnProperty(inst)) {
