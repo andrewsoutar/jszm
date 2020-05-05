@@ -809,7 +809,13 @@ JSZM.prototype = {
           };
 
           if (definedInstructions.hasOwnProperty(inst)) {
-            definedInstructions[inst](...parameters);
+            const fun = definedInstructions[inst];
+            const GeneratorFunction = Object.getPrototypeOf(function*(){}).constructor;
+            if (fun instanceof GeneratorFunction) {
+              yield* fun(...parameters);
+            } else {
+              fun(...parameters);
+            }
           } else {
             throw new Error("JSZM: Invalid Z-machine opcode");
           }
