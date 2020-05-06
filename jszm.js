@@ -177,47 +177,53 @@ JSZM.prototype = {
 
   getText: function(addr) {
     var output = "";
-    var ps=0; // permanent shift
-    var ts=0; // temporary shift
-    var w; // read each 16-bits data
-    var y; // auxiliary data for parsing state
-    let d = v => { // function to parse each Z-character
-      if(ts==3) {
-        y=v<<5;
-        ts=4;
-      } else if(ts==4) {
-        y+=v;
-        if(y==13) output += "\n";
-        else if(y) output += String.fromCharCode(y);
-        ts=ps;
-      } else if(ts==5) {
-        output += this.getText(this.getu(this.fwords+(y+v)*2)*2);
-        ts=ps;
-      } else if(v==0) {
+    var permanentShift = 0;
+    var temporaryShift = 0;
+    var auxParsingState;
+    let parseChar = encodedChar => { // function to parse each Z-character
+      if (temporaryShift == 3) {
+        auxParsingState = encodedChar << 5;
+        temporaryShift = 4;
+      } else if (temporaryShift == 4) {
+        auxParsingState += encodedChar;
+        if (auxParsingState == 13) {
+          output += "\n";
+        } else if (auxParsingState) {
+          output += String.fromCharCode(auxParsingState);
+        }
+        temporaryShift = permanentShift;
+      } else if (temporaryShift == 5) {
+        output += this.getText(this.getu(this.fwords + (auxParsingState + encodedChar) * 2) * 2);
+        temporaryShift = permanentShift;
+      } else if (encodedChar == 0) {
         output += " ";
-      } else if(v<4) {
-        ts=5;
-        y=(v-1)*32;
-      } else if(v<6) {
-        if(!ts) ts=v-3;
-        else if(ts==v-3) ps=ts;
-        else ps=ts=0;
-      } else if(v==6 && ts==2) {
-        ts=3;
+      } else if (encodedChar < 4) {
+        temporaryShift = 5;
+        auxParsingState = (encodedChar - 1) * 32;
+      } else if (encodedChar < 6) {
+        if (!temporaryShift)
+          temporaryShift = encodedChar - 3;
+        else if (temporaryShift == encodedChar - 3)
+          permanentShift = temporaryShift;
+        else
+          permanentShift = temporaryShift = 0;
+      } else if (encodedChar == 6 && temporaryShift == 2) {
+        temporaryShift = 3;
       } else {
-        output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[ts*26+v-6];
-        ts=ps;
+        output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[temporaryShift * 26 + encodedChar - 6];
+        temporaryShift = permanentShift;
       }
     };
     for(;;) {
-      w=this.getu(addr);
-      addr+=2;
-      d((w>>10)&31);
-      d((w>>5)&31);
-      d(w&31);
-      if(w&32768) break;
+      let w = this.getu(addr);
+      addr += 2;
+      parseChar((w>>10) & 0x1F);
+      parseChar((w>>5) & 0x1F);
+      parseChar(w & 0x1F);
+      if (w & 0x8000)
+        break;
     }
-    this.endText=addr;
+    this.endText = addr;
     return output;
   },
   getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
