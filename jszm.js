@@ -248,6 +248,32 @@ JSZM.prototype = {
   },
   getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
 
+  regBreak: null,
+
+  parseVocab: function(s) {
+    this.vocabulary=new Map();
+
+    if (s === 0) {                                    // If the story file does not contain a dictionary..
+      this.regBreak=new RegExp("[^ \\n\\t]+","g");    //   use the default word separators
+      return;                                         //   and early exit.
+    }
+
+    var e;
+    var n;
+    n=this.mem[s++];
+    e=this.selfInsertingBreaks=String.fromCharCode(...this.mem.slice(s,s+n));
+    e=e.split("").map(x=>(x.toUpperCase()==x.toLowerCase()?"":"\\")+x).join("")+"]";
+    this.regBreak=new RegExp("["+e+"|[^ \\n\\t"+e+"+","g");
+    s+=n;
+    e=this.mem[s++];
+    n=this.get(s);
+    s+=2;
+    while(n--) {
+      this.vocabulary.set(this.getText(s),s);
+      s+=e;
+    }
+  },
+
   handleInput: function(str, t1, t2) {
     // Put text
     str = str.toLowerCase().slice(0, this.mem[t1] - 1);
@@ -275,34 +301,10 @@ JSZM.prototype = {
   isTandy: false,
   mem: null,
   memInit: null,
-  parseVocab: function(s) {
-    this.vocabulary=new Map();
-    
-    if (s === 0) {                                    // If the story file does not contain a dictionary..
-      this.regBreak=new RegExp("[^ \\n\\t]+","g");    //   use the default word separators
-      return;                                         //   and early exit.
-    }
-
-    var e;
-    var n;
-    n=this.mem[s++];
-    e=this.selfInsertingBreaks=String.fromCharCode(...this.mem.slice(s,s+n));
-    e=e.split("").map(x=>(x.toUpperCase()==x.toLowerCase()?"":"\\")+x).join("")+"]";
-    this.regBreak=new RegExp("["+e+"|[^ \\n\\t"+e+"+","g");
-    s+=n;
-    e=this.mem[s++];
-    n=this.get(s);
-    s+=2;
-    while(n--) {
-      this.vocabulary.set(this.getText(s),s);
-      s+=e;
-    }
-  },
   print: ()=>[],
   put: function(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
   putu: function(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
   read: ()=>[],
-  regBreak: null,
   restarted: ()=>[],
   restore: ()=>[],
 
