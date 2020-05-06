@@ -249,29 +249,27 @@ JSZM.prototype = {
   getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
 
   handleInput: function(str, t1, t2) {
-    let i, br, w;
-
     // Put text
     str = str.toLowerCase().slice(0, this.mem[t1] - 1);
-    for(i = 0; i < str.length; i++)
-      this.mem[t1 + i + 1] = str.charCodeAt(i);
+    for(let i3 = 0; i3 < str.length; i3++)
+      this.mem[t1 + i3 + 1] = str.charCodeAt(i3);
     this.mem[t1 + str.length + 1] = 0;
 
     // Lex text
-    w = x => (
-      i=0,
-      x.split("").filter(y => (i += /[a-z]/.test(y) ? 1 :
-                                    /[0-9.,!?_#'"\/\\:\-()]/.test(y) ? 2 : 4) < 7)
-       .join("")
-    );
-    br = JSON.parse("[" +
-                    str.replace(this.regBreak, (m, o) => ",[" + (m.length) + "," + (this.vocabulary.get(w(m)) || 0) + "," + (o+1) + "]").slice(1) +
-                    "]");
-    i = this.mem[t2+1] = br.length;
-    while(i--) {
-      this.putu(t2 + i * 4 + 2, br[i][1]);
-      this.mem[t2 + i * 4 + 4] = br[i][0];
-      this.mem[t2 + i * 4 + 5] = br[i][2];
+    const w = x => {
+      let i2 = 0;
+      return x.split("").filter(y => (i2 += /[a-z]/.test(y) ? 1 :
+                                            /[0-9.,!?_#'"\/\\:\-()]/.test(y) ? 2 : 4) < 7)
+              .join("")
+    };
+    const br = JSON.parse("[" +
+                          str.replace(this.regBreak, (m, o) => ",[" + (m.length) + "," + (this.vocabulary.get(w(m)) || 0) + "," + (o+1) + "]").slice(1) +
+                          "]");
+    let i3 = this.mem[t2 + 1] = br.length;
+    while(i3--) {
+      this.putu(t2 + i3 * 4 + 2, br[i3][1]);
+      this.mem[t2 + i3 * 4 + 4] = br[i3][0];
+      this.mem[t2 + i3 * 4 + 5] = br[i3][2];
     }
   },
 
