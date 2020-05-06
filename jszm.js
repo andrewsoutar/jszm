@@ -203,11 +203,12 @@ JSZM.prototype = {
     }
     for (;;) {
       try {
-        const encodedChar = getNextEncodedChar();
         if (temporaryShift == 3) {
+          const encodedChar = getNextEncodedChar();
           auxParsingState = encodedChar << 5;
           temporaryShift = 4;
         } else if (temporaryShift == 4) {
+          const encodedChar = getNextEncodedChar();
           auxParsingState += encodedChar;
           if (auxParsingState == 13) {
             output += "\n";
@@ -216,25 +217,29 @@ JSZM.prototype = {
           }
           temporaryShift = permanentShift;
         } else if (temporaryShift == 5) {
+          const encodedChar = getNextEncodedChar();
           output += this.getText(this.getu(this.fwords + (auxParsingState + encodedChar) * 2) * 2);
           temporaryShift = permanentShift;
-        } else if (encodedChar == 0) {
-          output += " ";
-        } else if (encodedChar < 4) {
-          temporaryShift = 5;
-          auxParsingState = (encodedChar - 1) * 32;
-        } else if (encodedChar < 6) {
-          if (!temporaryShift)
-            temporaryShift = encodedChar - 3;
-          else if (temporaryShift == encodedChar - 3)
-            permanentShift = temporaryShift;
-          else
-            permanentShift = temporaryShift = 0;
-        } else if (encodedChar == 6 && temporaryShift == 2) {
-          temporaryShift = 3;
         } else {
-          output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[temporaryShift * 26 + encodedChar - 6];
-          temporaryShift = permanentShift;
+          const encodedChar = getNextEncodedChar();
+          if (encodedChar == 0) {
+            output += " ";
+          } else if (encodedChar < 4) {
+            temporaryShift = 5;
+            auxParsingState = (encodedChar - 1) * 32;
+          } else if (encodedChar < 6) {
+            if (!temporaryShift)
+              temporaryShift = encodedChar - 3;
+            else if (temporaryShift == encodedChar - 3)
+              permanentShift = temporaryShift;
+            else
+              permanentShift = temporaryShift = 0;
+          } else if (encodedChar == 6 && temporaryShift == 2) {
+            temporaryShift = 3;
+          } else {
+            output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[temporaryShift * 26 + encodedChar - 6];
+            temporaryShift = permanentShift;
+          }
         }
       } catch (e) {
         if (e instanceof StopIteration) {
