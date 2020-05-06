@@ -286,9 +286,7 @@ JSZM.prototype = {
                                             /[0-9.,!?_#'"\/\\:\-()]/.test(y) ? 2 : 4) < 7)
               .join("")
     };
-    const br = JSON.parse("[" +
-                          str.replace(this.regBreak, (m, o) => ",[" + (m.length) + "," + (this.vocabulary.get(w(m)) || 0) + "," + (o+1) + "]").slice(1) +
-                          "]");
+    const br = [...str.matchAll(this.regBreak)].map(({0: str, index}) => [str.length, this.vocabulary.get(w(str)) || 0, index + 1]);
     let i3 = this.mem[t2 + 1] = br.length;
     while(i3--) {
       this.putu(t2 + i3 * 4 + 2, br[i3][1]);
