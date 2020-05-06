@@ -251,9 +251,7 @@ JSZM.prototype = {
   handleInput: function(str, t1, t2) {
     // Put text
     str = str.toLowerCase().slice(0, this.mem[t1] - 1);
-    for(let i3 = 0; i3 < str.length; i3++)
-      this.mem[t1 + i3 + 1] = str.charCodeAt(i3);
-    this.mem[t1 + str.length + 1] = 0;
+    this.mem.set(Array.prototype.map.call(str, c => c.codePointAt(0)).concat([0]), t1 + 1);
 
     // Lex text
     const w = x => {
