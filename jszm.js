@@ -207,25 +207,19 @@ JSZM.prototype = {
         if (encodedChar == 0) {
           output += " ";
         } else if (encodedChar < 4) {
-          temporaryShift = 5;
           auxParsingState = (encodedChar - 1) * 32;
-          const encodedChar2 = getNextEncodedChar();
-          output += this.getText(this.getu(this.fwords + (auxParsingState + encodedChar2) * 2) * 2);
+          output += this.getText(this.getu(this.fwords + (auxParsingState + getNextEncodedChar()) * 2) * 2);
           temporaryShift = permanentShift;
         } else if (encodedChar < 6) {
-          if (!temporaryShift)
+          if (temporaryShift === 0)
             temporaryShift = encodedChar - 3;
           else if (temporaryShift == encodedChar - 3)
             permanentShift = temporaryShift;
           else
             permanentShift = temporaryShift = 0;
         } else if (encodedChar == 6 && temporaryShift == 2) {
-          temporaryShift = 3;
-          const encodedChar2 = getNextEncodedChar();
-          auxParsingState = encodedChar2 << 5;
-          temporaryShift = 4;
-          const encodedChar3 = getNextEncodedChar();
-          auxParsingState += encodedChar3;
+          auxParsingState = getNextEncodedChar() << 5;
+          auxParsingState += getNextEncodedChar();
           if (auxParsingState == 13) {
             output += "\n";
           } else if (auxParsingState) {
