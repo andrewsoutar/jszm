@@ -262,9 +262,9 @@ JSZM.prototype = {
     const selfInsertingBreaks = this.selfInsertingBreaks = String.fromCharCode(...this.mem.slice(s, s + strLen));
     s += strLen;
 
-    const breaksRegexStr = selfInsertingBreaks.split("").map(x => (x.toUpperCase() == x.toLowerCase() ? "" : "\\") + x).join("")+"]";
+    const breaksRegexStr = selfInsertingBreaks.split("").map(x => (x.toUpperCase() == x.toLowerCase() ? "" : "\\") + x).join("");
 
-    this.regBreak = new RegExp("[" + breaksRegexStr + "|[^ \\n\\t" + breaksRegexStr + "+", "g");
+    this.regBreak = new RegExp("[" + breaksRegexStr + "]|[^ \\n\\t" + breaksRegexStr + "]+", "g");
     const wordLength = this.mem[s++];
     let numWords = this.get(s);
     s += 2;
