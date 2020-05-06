@@ -217,14 +217,14 @@ JSZM.prototype = {
           case 4:
           case 5:
             if (temporaryShift === 0)
-              temporaryShift = (encodedChar - 3) * 26;
-            else if (temporaryShift === (encodedChar - 3) * 26)
+              temporaryShift = (encodedChar - 3);
+            else if (temporaryShift === (encodedChar - 3))
               permanentShift = temporaryShift;
             else
               permanentShift = temporaryShift = 0;
             continue;
           default:
-            if (encodedChar == 6 && temporaryShift == 52) {
+            if (encodedChar === 6 && temporaryShift === 2) {
               const asciiByte = getNextEncodedChar() << 5 | getNextEncodedChar();
               if (asciiByte === 13) {
                 output += "\n";
@@ -233,11 +233,12 @@ JSZM.prototype = {
               }
               temporaryShift = permanentShift;
             } else {
-              const alphabet =
-                "abcdefghijklmnopqrstuvwxyz" +
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + 
+              const charTable = [
+                "abcdefghijklmnopqrstuvwxyz",
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
                 "*\n0123456789.,!?_#'\"/\\-:()"
-              output += alphabet[temporaryShift + encodedChar - 6];
+              ];
+              output += charTable[temporaryShift][encodedChar - 6];
               temporaryShift = permanentShift;
             }            
         }
