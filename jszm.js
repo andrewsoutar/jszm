@@ -176,29 +176,21 @@ JSZM.prototype = {
   get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
 
   getText: function(addr) {
+    class StopIteration {}
     function* getEncodedChars() {
       for (;;) {
         const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
         addr += 2;
         yield* chars;
         if (done)
-          break;
+          throw new StopIteration();
       }
     }
-
-    var output = "";
 
     const encodedCharGen = getEncodedChars.call(this);
-    class StopIteration {}
-    function getNextEncodedChar() {
-      const {done, value} = encodedCharGen.next();
-      if (done) {
-        throw new StopIteration();
-      } else {
-        return value;
-      }
-    }
+    const getNextEncodedChar = () => encodedCharGen.next().value;
 
+    let output = "";
     let permanentShift = 0;
     let temporaryShift = 0;
     for (;;) {
