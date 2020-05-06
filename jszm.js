@@ -214,13 +214,21 @@ JSZM.prototype = {
         temporaryShift = permanentShift;
       }
     };
-    for(;;) {
-      const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
-      addr += 2;
-      chars.forEach(parseChar);
-      if (done)
-        break;
+
+    function* getEncodedChars() {
+      for (;;) {
+        const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
+        addr += 2;
+        yield* chars;
+        if (done)
+          break;
+      }
     }
+
+    for (const char of getEncodedChars.call(this)) {
+      parseChar(char);
+    }
+
     this.endText = addr;
     return output;
   },
