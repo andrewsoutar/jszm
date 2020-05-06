@@ -287,11 +287,12 @@ JSZM.prototype = {
               .join("")
     };
     const br = [...str.matchAll(this.regBreak)].map(({0: str, index}) => [str.length, this.vocabulary.get(w(str)) || 0, index + 1]);
-    let i3 = this.mem[t2 + 1] = br.length;
-    while(i3--) {
-      this.putu(t2 + i3 * 4 + 2, br[i3][1]);
-      this.mem[t2 + i3 * 4 + 4] = br[i3][0];
-      this.mem[t2 + i3 * 4 + 5] = br[i3][2];
+    this.mem[t2 + 1] = br.length;
+    for (const [index, value] of br.entries()) {
+      const addr = t2 + index * 4 + 2;
+      this.putu(addr, value[1]);
+      this.mem[addr + 2] = value[0];
+      this.mem[addr + 3] = value[2];
     }
   },
 
