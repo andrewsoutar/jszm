@@ -215,12 +215,10 @@ JSZM.prototype = {
       }
     };
     for(;;) {
-      let w = this.getu(addr);
+      const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
       addr += 2;
-      parseChar((w>>10) & 0x1F);
-      parseChar((w>>5) & 0x1F);
-      parseChar(w & 0x1F);
-      if (w & 0x8000)
+      chars.forEach(parseChar);
+      if (done)
         break;
     }
     this.endText = addr;
