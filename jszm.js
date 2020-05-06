@@ -176,11 +176,22 @@ JSZM.prototype = {
   get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
 
   getText: function(addr) {
+    function* getEncodedChars() {
+      for (;;) {
+        const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
+        addr += 2;
+        yield* chars;
+        if (done)
+          break;
+      }
+    }
+
     var output = "";
     var permanentShift = 0;
     var temporaryShift = 0;
     var auxParsingState;
-    let parseChar = encodedChar => { // function to parse each Z-character
+
+    for (const encodedChar of getEncodedChars.call(this)) {
       if (temporaryShift == 3) {
         auxParsingState = encodedChar << 5;
         temporaryShift = 4;
@@ -213,20 +224,6 @@ JSZM.prototype = {
         output += "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*\n0123456789.,!?_#'\"/\\-:()"[temporaryShift * 26 + encodedChar - 6];
         temporaryShift = permanentShift;
       }
-    };
-
-    function* getEncodedChars() {
-      for (;;) {
-        const [done, ...chars] = splitBytes(this.getu(addr), 1, 5, 5, 5);
-        addr += 2;
-        yield* chars;
-        if (done)
-          break;
-      }
-    }
-
-    for (const char of getEncodedChars.call(this)) {
-      parseChar(char);
     }
 
     this.endText = addr;
