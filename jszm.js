@@ -251,26 +251,26 @@ JSZM.prototype = {
   regBreak: null,
 
   parseVocab: function(s) {
-    this.vocabulary=new Map();
+    this.vocabulary = new Map();
 
     if (s === 0) {                                    // If the story file does not contain a dictionary..
-      this.regBreak=new RegExp("[^ \\n\\t]+","g");    //   use the default word separators
+      this.regBreak = new RegExp("[^ \\n\\t]+","g");  //   use the default word separators
       return;                                         //   and early exit.
     }
 
-    var e;
-    var n;
-    n=this.mem[s++];
-    e=this.selfInsertingBreaks=String.fromCharCode(...this.mem.slice(s,s+n));
-    e=e.split("").map(x=>(x.toUpperCase()==x.toLowerCase()?"":"\\")+x).join("")+"]";
-    this.regBreak=new RegExp("["+e+"|[^ \\n\\t"+e+"+","g");
-    s+=n;
-    e=this.mem[s++];
-    n=this.get(s);
-    s+=2;
-    while(n--) {
-      this.vocabulary.set(this.getText(s),s);
-      s+=e;
+    const strLen = this.mem[s++];
+    const selfInsertingBreaks = this.selfInsertingBreaks = String.fromCharCode(...this.mem.slice(s, s + strLen));
+    s += strLen;
+
+    const breaksRegexStr = selfInsertingBreaks.split("").map(x => (x.toUpperCase() == x.toLowerCase() ? "" : "\\") + x).join("")+"]";
+
+    this.regBreak = new RegExp("[" + breaksRegexStr + "|[^ \\n\\t" + breaksRegexStr + "+", "g");
+    const wordLength = this.mem[s++];
+    let numWords = this.get(s);
+    s += 2;
+    while (numWords--) {
+      this.vocabulary.set(this.getText(s), s);
+      s += wordLength;
     }
   },
 
