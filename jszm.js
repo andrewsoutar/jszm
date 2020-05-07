@@ -97,31 +97,29 @@ function splitBytes(bytes, ...counts) {
                .reverse();
 }
 
-function JSZM(arr) {
-  this.endText = 0;
-  this.fwords = null;
-  this.regBreak = null;
-  this.isTandy = false;
-  this.mem = null;
-  this.savedFlags = 0;
-  this.selfInsertingBreaks = null;
-  this.screen = null;
-  this.split = null;
-  this.updateStatusLine = null;
-  this.view = null;
-  this.vocabulary = null;
+class JSZM {
+  constructor(arr) {
+    this.endText = 0;
+    this.fwords = null;
+    this.regBreak = null;
+    this.isTandy = false;
+    this.mem = null;
+    this.savedFlags = 0;
+    this.selfInsertingBreaks = null;
+    this.screen = null;
+    this.split = null;
+    this.updateStatusLine = null;
+    this.view = null;
+    this.vocabulary = null;
 
-  let mem = this.memInit = new Uint8Array(arr);
-  if (mem[0] != 3)
-    throw new Error("Unsupported Z-code version.");
-  this.byteSwapped = !!(mem[1] & 1);
-  this.statusType = !!(mem[1] & 2);
-  this.serial = String.fromCharCode(...mem.slice(18, 24));
-  this.zorkid = (mem[2] << (this.byteSwapped ? 0 : 8)) | (mem[3] << (this.byteSwapped ? 8 : 0));
-}
-
-JSZM.prototype = {
-  constructor: JSZM,
+    let mem = this.memInit = new Uint8Array(arr);
+    if (mem[0] != 3)
+      throw new Error("Unsupported Z-code version.");
+    this.byteSwapped = !!(mem[1] & 1);
+    this.statusType = !!(mem[1] & 2);
+    this.serial = String.fromCharCode(...mem.slice(18, 24));
+    this.zorkid = (mem[2] << (this.byteSwapped ? 0 : 8)) | (mem[3] << (this.byteSwapped ? 8 : 0));
+  }
 
   deserialize(ar) {
     var e, i, j, ds, cs, pc, vi, purbot;
@@ -177,7 +175,7 @@ JSZM.prototype = {
     } catch(e) {
       return null;
     }
-  },
+  }
 
   *genPrint(text) {
     var x = this.get(16);
@@ -186,9 +184,9 @@ JSZM.prototype = {
       yield* this.highlight(!!(x & 2));
     }
     yield* this.print(text, !!(x&1));
-  },
+  }
 
-  get(x) { return this.view.getInt16(x, this.byteSwapped); },
+  get(x) { return this.view.getInt16(x, this.byteSwapped); }
 
   getText(addr) {
     class StopIteration {}
@@ -255,8 +253,8 @@ JSZM.prototype = {
 
     this.endText = addr;
     return output;
-  },
-  getu(x) { return this.view.getUint16(x,this.byteSwapped); },
+  }
+  getu(x) { return this.view.getUint16(x,this.byteSwapped); }
 
   parseVocab(s) {
     this.vocabulary = new Map();
@@ -280,7 +278,7 @@ JSZM.prototype = {
       this.vocabulary.set(this.getText(s), s);
       s += wordLength;
     }
-  },
+  }
 
   handleInput(str, t1, t2) {
     // Put text
@@ -311,15 +309,15 @@ JSZM.prototype = {
       this.mem[addr + 2] = token.length;
       this.mem[addr + 3] = tokenPos + 1;
     }
-  },
+  }
 
-  highlight() { return []; },
-  print() { return []; },
-  put(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
-  putu(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
-  read() { return []; },
-  restarted() { return []; },
-  restore() { return []; },
+  highlight() { return []; }
+  print() { return []; }
+  put(x,y) { return this.view.setInt16(x,y,this.byteSwapped); }
+  putu(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); }
+  read() { return []; }
+  restarted() { return []; }
+  restore() { return []; }
 
   *run() {
     var mem,pc,cs,ds,y,z;
@@ -856,8 +854,8 @@ JSZM.prototype = {
       }
     }
 
-  },
-  save() { return []; },
+  }
+  save() { return []; }
   serialize(ds,cs,pc) {
     var i,j,e,ar,vi;
     e=this.getu(14); // PURBOT
@@ -879,14 +877,14 @@ JSZM.prototype = {
       e+=(cs[i].ds.length+cs[i].local.length)*2+6;
     }
     return ar;
-  },
+  }
   verify() {
     var plenth=this.getu(26);
     var pchksm=this.getu(28);
     var i=64;
     while(i<plenth*2) pchksm=(pchksm-this.memInit[i++])&65535;
     return !pchksm;
-  },
+  }
 };
 
 JSZM.version=JSZM_Version;
