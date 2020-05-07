@@ -98,6 +98,19 @@ function splitBytes(bytes, ...counts) {
 }
 
 function JSZM(arr) {
+  this.endText = 0;
+  this.fwords = null;
+  this.regBreak = null;
+  this.isTandy = false;
+  this.mem = null;
+  this.savedFlags = 0;
+  this.selfInsertingBreaks = null;
+  this.screen = null;
+  this.split = null;
+  this.updateStatusLine = null;
+  this.view = null;
+  this.vocabulary = null;
+
   let mem = this.memInit = new Uint8Array(arr);
   if (mem[0] != 3)
     throw new Error("Unsupported Z-code version.");
@@ -108,7 +121,6 @@ function JSZM(arr) {
 }
 
 JSZM.prototype = {
-  byteSwapped: false,
   constructor: JSZM,
 
   deserialize(ar) {
@@ -166,9 +178,6 @@ JSZM.prototype = {
       return null;
     }
   },
-
-  endText: 0,
-  fwords: null,
 
   *genPrint(text) {
     var x = this.get(16);
@@ -249,8 +258,6 @@ JSZM.prototype = {
   },
   getu(x) { return this.view.getUint16(x,this.byteSwapped); },
 
-  regBreak: null,
-
   parseVocab(s) {
     this.vocabulary = new Map();
 
@@ -307,9 +314,6 @@ JSZM.prototype = {
   },
 
   highlight() { return []; },
-  isTandy: false,
-  mem: null,
-  memInit: null,
   print() { return []; },
   put(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
   putu(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
@@ -854,9 +858,6 @@ JSZM.prototype = {
 
   },
   save() { return []; },
-  savedFlags: 0,
-  selfInsertingBreaks: null,
-  serial: null,
   serialize(ds,cs,pc) {
     var i,j,e,ar,vi;
     e=this.getu(14); // PURBOT
@@ -879,10 +880,6 @@ JSZM.prototype = {
     }
     return ar;
   },
-  screen: null,
-  split: null,
-  statusType: null,
-  updateStatusLine: null,
   verify() {
     var plenth=this.getu(26);
     var pchksm=this.getu(28);
@@ -890,9 +887,6 @@ JSZM.prototype = {
     while(i<plenth*2) pchksm=(pchksm-this.memInit[i++])&65535;
     return !pchksm;
   },
-  view: null,
-  vocabulary: null,
-  zorkid: null,
 };
 
 JSZM.version=JSZM_Version;
