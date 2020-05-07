@@ -85,6 +85,12 @@ const JSZM_Version = {
   timestamp: 1480624305074
 };
 
+const zsciiCharTable = [
+  "abcdefghijklmnopqrstuvwxyz",
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+  "*\n0123456789.,!?_#'\"/\\-:()"
+];
+
 function splitBytes(bytes, ...counts) {
   return counts.reverse()
                .map(count => [bytes & ((1 << count) - 1), bytes >>>= count][0])
@@ -225,12 +231,7 @@ JSZM.prototype = {
               }
               temporaryShift = permanentShift;
             } else {
-              const charTable = [
-                "abcdefghijklmnopqrstuvwxyz",
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-                "*\n0123456789.,!?_#'\"/\\-:()"
-              ];
-              output += charTable[temporaryShift][encodedChar - 6];
+              output += zsciiCharTable[temporaryShift][encodedChar - 6];
               temporaryShift = permanentShift;
             }            
         }
@@ -279,19 +280,27 @@ JSZM.prototype = {
     str = str.toLowerCase().slice(0, this.mem[t1] - 1);
     this.mem.set(Array.prototype.map.call(str, c => c.codePointAt(0)).concat([0]), t1 + 1);
 
-    // Lex text
-    const w = x => {
-      let i2 = 0;
-      return x.split("").filter(y => (i2 += /[a-z]/.test(y) ? 1 :
-                                            /[0-9.,!?_#'"\/\\:\-()]/.test(y) ? 2 : 4) < 7)
-              .join("")
-    };
+    function trimForVocabulary(str, limit = 6) {
+      let result = "";
+      for (const char of str) {
+        if (zsciiCharTable[0].includes(char))
+          limit -= 1;
+        else if (zsciiCharTable.some(table => table.includes(char)))
+          limit -= 2; // Shift + character
+        else
+          limit -= 4; // Shift2 + 06 + high + low
+        if (limit < 0)
+          break;
+        result += char;
+      }
+      return result;
+    }
 
     const tokens = [...str.matchAll(this.regBreak)];
     this.mem[t2 + 1] = tokens.length;
     for (const [index, {0: token, index: tokenPos}] of tokens.entries()) {
       const addr = t2 + index * 4 + 2;
-      this.putu(addr, this.vocabulary.get(w(token)));
+      this.putu(addr, this.vocabulary.get(trimForVocabulary(token)));
       this.mem[addr + 2] = token.length;
       this.mem[addr + 3] = tokenPos + 1;
     }
