@@ -111,7 +111,7 @@ JSZM.prototype = {
   byteSwapped: false,
   constructor: JSZM,
 
-  deserialize: function(ar) {
+  deserialize(ar) {
     var e, i, j, ds, cs, pc, vi, purbot;
 
     function getUint8() {
@@ -170,7 +170,7 @@ JSZM.prototype = {
   endText: 0,
   fwords: null,
 
-  genPrint: function*(text) {
+  *genPrint(text) {
     var x = this.get(16);
     if(x != this.savedFlags) {
       this.savedFlags = x;
@@ -179,9 +179,9 @@ JSZM.prototype = {
     yield* this.print(text, !!(x&1));
   },
 
-  get: function(x) { return this.view.getInt16(x, this.byteSwapped); },
+  get(x) { return this.view.getInt16(x, this.byteSwapped); },
 
-  getText: function(addr) {
+  getText(addr) {
     class StopIteration {}
     function* getEncodedChars() {
       for (;;) {
@@ -247,11 +247,11 @@ JSZM.prototype = {
     this.endText = addr;
     return output;
   },
-  getu: function(x) { return this.view.getUint16(x,this.byteSwapped); },
+  getu(x) { return this.view.getUint16(x,this.byteSwapped); },
 
   regBreak: null,
 
-  parseVocab: function(s) {
+  parseVocab(s) {
     this.vocabulary = new Map();
 
     if (s === 0) {                                    // If the story file does not contain a dictionary..
@@ -275,7 +275,7 @@ JSZM.prototype = {
     }
   },
 
-  handleInput: function(str, t1, t2) {
+  handleInput(str, t1, t2) {
     // Put text
     str = str.toLowerCase().slice(0, this.mem[t1] - 1);
     this.mem.set(Array.prototype.map.call(str, c => c.codePointAt(0)).concat([0]), t1 + 1);
@@ -306,18 +306,18 @@ JSZM.prototype = {
     }
   },
 
-  highlight: ()=>[],
+  highlight() { return []; },
   isTandy: false,
   mem: null,
   memInit: null,
-  print: ()=>[],
-  put: function(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
-  putu: function(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
-  read: ()=>[],
-  restarted: ()=>[],
-  restore: ()=>[],
+  print() { return []; },
+  put(x,y) { return this.view.setInt16(x,y,this.byteSwapped); },
+  putu(x,y) { return this.view.setUint16(x,y&65535,this.byteSwapped); },
+  read() { return []; },
+  restarted() { return []; },
+  restore() { return []; },
 
-  run: function*() {
+  *run() {
     var mem,pc,cs,ds,y,z;
     var globals,objects,fwords,defprop;
     var addr,fetch,flagset,init,move,pcfetch,pcget,pcgetb,pcgetu,predicate,propfind,ret,store,xfetch,xstore;
@@ -853,11 +853,11 @@ JSZM.prototype = {
     }
 
   },
-  save: ()=>[],
+  save() { return []; },
   savedFlags: 0,
   selfInsertingBreaks: null,
   serial: null,
-  serialize: function(ds,cs,pc) {
+  serialize(ds,cs,pc) {
     var i,j,e,ar,vi;
     e=this.getu(14); // PURBOT
     i=e+cs.reduce((p,c)=>p+2*(c.ds.length+c.local.length)+6,0)+2*ds.length+8;
@@ -883,7 +883,7 @@ JSZM.prototype = {
   split: null,
   statusType: null,
   updateStatusLine: null,
-  verify: function() {
+  verify() {
     var plenth=this.getu(26);
     var pchksm=this.getu(28);
     var i=64;
