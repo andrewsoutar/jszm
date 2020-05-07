@@ -286,13 +286,14 @@ JSZM.prototype = {
                                             /[0-9.,!?_#'"\/\\:\-()]/.test(y) ? 2 : 4) < 7)
               .join("")
     };
-    const br = [...str.matchAll(this.regBreak)].map(({0: str, index}) => [str.length, this.vocabulary.get(w(str)) || 0, index + 1]);
-    this.mem[t2 + 1] = br.length;
-    for (const [index, value] of br.entries()) {
+
+    const tokens = [...str.matchAll(this.regBreak)];
+    this.mem[t2 + 1] = tokens.length;
+    for (const [index, {0: token, index: tokenPos}] of tokens.entries()) {
       const addr = t2 + index * 4 + 2;
-      this.putu(addr, value[1]);
-      this.mem[addr + 2] = value[0];
-      this.mem[addr + 3] = value[2];
+      this.putu(addr, this.vocabulary.get(w(token)));
+      this.mem[addr + 2] = token.length;
+      this.mem[addr + 3] = tokenPos + 1;
     }
   },
 
