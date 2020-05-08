@@ -320,8 +320,10 @@ class JSZM {
   restore() { return []; }
 
   *run() {
-    var mem,pc,cs,ds,y,z;
+    var mem,y,z;
     var globals,objects,fwords,defprop;
+
+    let programCounter = null, callStack = null, dataStack = null;
 
     // Functions
     function addr(x) {
@@ -329,8 +331,8 @@ class JSZM {
     }
 
     const fetch = (x) => {
-      if(x==0) return ds.pop();
-      if(x<16) return cs[0].local[x-1];
+      if(x==0) return dataStack.pop();
+      if(x<16) return callStack[0].local[x-1];
       return this.get(globals+2*x);
     };
 
@@ -357,9 +359,9 @@ class JSZM {
       defprop=this.getu(10)-2;
       globals=this.getu(12)-32;
       this.fwords=fwords=this.getu(24);
-      cs=[];
-      ds=[];
-      pc=this.getu(6);
+      callStack=[];
+      dataStack=[];
+      programCounter=this.getu(6);
       objects=defprop+55;
       initRng();
     };
@@ -388,18 +390,18 @@ class JSZM {
       }
     };
 
-    const pcfetch = (x) => fetch(mem[pc++]);
+    const pcfetch = (x) => fetch(mem[programCounter++]);
 
     const pcget = () => {
-      pc+=2;
-      return this.get(pc-2);
+      programCounter+=2;
+      return this.get(programCounter-2);
     };
 
-    const pcgetb = () => mem[pc++];
+    const pcgetb = () => mem[programCounter++];
 
     const pcgetu = () => {
-      pc+=2;
-      return this.getu(pc-2);
+      programCounter+=2;
+      return this.getu(programCounter-2);
     };
 
     const predicate = (p) => {
@@ -409,7 +411,7 @@ class JSZM {
       if(p) return;
       if(x==0 || x==1) return ret(x);
       if(x&0x2000) x-=0x4000;
-      pc+=x-2;
+      programCounter+=x-2;
     };
 
     const propfind = (op0Nonshared, op1Nonshared) => {
@@ -426,28 +428,28 @@ class JSZM {
     };
 
     const ret = (x) => {
-      ds=cs[0].ds;
-      pc=cs[0].pc;
-      cs.shift();
+      dataStack=callStack[0].ds;
+      programCounter=callStack[0].pc;
+      callStack.shift();
       store(x);
     };
 
     const store = (y) => {
       var x=pcgetb();
-      if(x==0) ds.push(y);
-      else if(x<16) cs[0].local[x-1]=y;
+      if(x==0) dataStack.push(y);
+      else if(x<16) callStack[0].local[x-1]=y;
       else this.put(globals+2*x,y);
     };
 
     const xfetch = (x) => {
-      if(x==0) return ds[ds.length-1];
-      if(x<16) return cs[0].local[x-1];
+      if(x==0) return dataStack[dataStack.length-1];
+      if(x<16) return callStack[0].local[x-1];
       return this.get(globals+2*x);
     };
 
     const xstore = (x, y) => {
-      if(x==0) ds[ds.length-1]=y;
-      else if(x<16) cs[0].local[x-1]=y;
+      if(x==0) dataStack[dataStack.length-1]=y;
+      else if(x<16) callStack[0].local[x-1]=y;
       else this.put(globals+2*x,y);
     };
 
@@ -482,12 +484,12 @@ class JSZM {
         },
         0x2: // PRINTI
         function*() { /* void */
-          yield* this.genPrint(this.getText(pc));
-          pc=this.endText;
+          yield* this.genPrint(this.getText(programCounter));
+          programCounter=this.endText;
         }.bind(this),
         0x3: // PRINTR
         function*() { /* void */
-          yield* this.genPrint(this.getText(pc) + "\n");
+          yield* this.genPrint(this.getText(programCounter) + "\n");
           ret(1);
         }.bind(this),
         0x4: // NOOP
@@ -495,7 +497,7 @@ class JSZM {
         0x5: // SAVE
         function*() { /* void */
           this.savedFlags = this.get(16);
-          predicate(yield* this.save(this.serialize(ds,cs,pc)));
+          predicate(yield* this.save(this.serialize(dataStack,callStack,programCounter)));
         }.bind(this),
         0x6: // RESTORE
         function*() { /* void */
@@ -504,9 +506,9 @@ class JSZM {
             z = this.deserialize(z);
           this.put(16, this.savedFlags);
           if (z) {
-            ds = z[0];
-            cs = z[1];
-            pc = z[2];
+            dataStack = z[0];
+            callStack = z[1];
+            programCounter = z[2];
           }
           predicate(z);
         }.bind(this),
@@ -517,11 +519,11 @@ class JSZM {
         }.bind(this),
         0x8: // RSTACK
         () => { /* void */
-          ret(ds[ds.length-1]);
+          ret(dataStack[dataStack.length-1]);
         },
         0x9: // FSTACK
         () => { /* void */
-          ds.pop();
+          dataStack.pop();
         },
         0xA: // QUIT
         () => {
@@ -596,7 +598,7 @@ class JSZM {
         },
         0xC: // JUMP
         (offset) => { /* unary */
-          pc += offset - 2;
+          programCounter += offset - 2;
         },
         0xD: // PRINT
         function*(strAddr) { /* unary */
@@ -738,17 +740,17 @@ class JSZM {
         (method, ...params) => { /* vararg */
           if(method) {
             const tmp = mem[method = addr(method)];
-            cs.unshift({ds: ds, pc: pc, local: new Int16Array(tmp)});
-            ds = [];
-            pc = method + 1;
+            callStack.unshift({dataStack: dataStack, programCounter: programCounter, local: new Int16Array(tmp)});
+            dataStack = [];
+            programCounter = method + 1;
             for (let i = 0; i < mem[method]; i++)
-              cs[0].local[i] = pcget();
+              callStack[0].local[i] = pcget();
             if (params.length > 0 && typeof params[0] !== "undefined" && mem[method] > 0)
-              cs[0].local[0] = params[0];
+              callStack[0].local[0] = params[0];
             if (params.length > 1 && typeof params[1] !== "undefined" && mem[method] > 1)
-              cs[0].local[1] = params[1];
+              callStack[0].local[1] = params[1];
             if (params.length > 2 && typeof params[2] !== "undefined" && mem[method] > 2)
-              cs[0].local[2] = params[2];
+              callStack[0].local[2] = params[2];
           } else {
             store(0);
           }
@@ -804,11 +806,11 @@ class JSZM {
         },
         0x8: // PUSH
         (a) => { /* vararg */
-          ds.push(a);
+          dataStack.push(a);
         },
         0x9: // POP
         (loc) => { /* vararg */
-          xstore(loc, ds.pop());
+          xstore(loc, dataStack.pop());
         },
         0xA: // SPLIT
         function*(op0Nonshared) { /* vararg */
