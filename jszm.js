@@ -320,7 +320,7 @@ class JSZM {
   restore() { return []; }
 
   *run() {
-    var mem,y,z;
+    var mem;
     var globals,objects,fwords,defprop;
 
     let programCounter = null, callStack = null, dataStack = null;
@@ -502,15 +502,16 @@ class JSZM {
         0x6: // RESTORE
         function*() { /* void */
           this.savedFlags = this.get(16);
-          if (z = yield* this.restore())
-            z = this.deserialize(z);
+          let restoreValue = yield* this.restore();
+          if (restoreValue)
+            restoreValue = this.deserialize(restoreValue);
           this.put(16, this.savedFlags);
-          if (z) {
+          if (restoreValue) {
             dataStack = z[0];
             callStack = z[1];
             programCounter = z[2];
           }
-          predicate(z);
+          predicate(restoreValue);
         }.bind(this),
         0x7: // RESTART
         function*() { /* void */
