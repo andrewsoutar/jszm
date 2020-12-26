@@ -1,0 +1,1 @@
+[[https://www.inform-fiction.org/zmachine/standards][Z-Machine Specs]]
